@@ -1,0 +1,47 @@
+From a68e6920350f51a8a625f5743e55312f590f030b Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Wed, 18 May 2016 18:29:15 +0800
+Subject: [PATCH v4 0/4] QOM'ify hw/char devices
+
+This patch set trys to QOM'ify hw/char files, see commit messages 
+for more details
+
+Thanks Paolo <pbonzini@redhat.com> for your suggestions.
+
+Note:
+* CRIS axis_dev88 broad related test is passed and looks ok.
+* lm32 test is needed.
+
+Changes in v4:
+* add wrapper functions to create char device
+* drop the sysbus_create_simple function and
+  use the new qdev_create stuff
+
+Changes in v3: 
+* use chardev property instead of qemu_char_get_next_serial
+* call the functions that touch globals in the realize callback
+
+Changes in v2: 
+* rename TYPE_SCLP_LM_CONSOLE to TYPE_SCLPLM_CONSOLE which is suggested by  
+  Cornelia Huck <cornelia.huck@de.ibm.com>
+* rebase on the current master
+
+xiaoqiang zhao (4):
+  hw/char: QOM'ify escc.c
+  hw/char: QOM'ify etraxfs_ser.c
+  hw/char: QOM'ify lm32_juart.c
+  hw/char: QOM'ify lm32_uart.c
+
+ hw/char/escc.c            | 30 +++++++++++++++++++-----------
+ hw/char/etraxfs_ser.c     | 27 +++++++++++++++++----------
+ hw/char/lm32_juart.c      | 17 ++++++++---------
+ hw/char/lm32_uart.c       | 28 +++++++++++++++++-----------
+ hw/cris/axis_dev88.c      |  4 ++--
+ hw/lm32/lm32.h            | 20 ++++++++++++++++++++
+ hw/lm32/lm32_boards.c     |  4 ++--
+ include/hw/cris/etraxfs.h | 16 ++++++++++++++++
+ 8 files changed, 101 insertions(+), 45 deletions(-)
+
+-- 
+2.1.4
+

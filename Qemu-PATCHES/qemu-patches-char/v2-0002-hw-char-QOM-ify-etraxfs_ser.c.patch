@@ -1,0 +1,60 @@
+From 321cfbf68f17cf66e337af0ec4140ecc278f803a Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Thu, 17 Mar 2016 11:23:14 +0800
+Subject: [PATCH v2 2/6] hw/char: QOM'ify etraxfs_ser.c
+
+Drop the old SysBus init function and use instance_init
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/char/etraxfs_ser.c | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/hw/char/etraxfs_ser.c b/hw/char/etraxfs_ser.c
+index 146b387..ede7024 100644
+--- a/hw/char/etraxfs_ser.c
++++ b/hw/char/etraxfs_ser.c
+@@ -209,12 +209,13 @@ static void etraxfs_ser_reset(DeviceState *d)
+ 
+ }
+ 
+-static int etraxfs_ser_init(SysBusDevice *dev)
++static void etraxfs_ser_init(Object *obj)
+ {
+-    ETRAXSerial *s = ETRAX_SERIAL(dev);
++    ETRAXSerial *s = ETRAX_SERIAL(obj);
++    SysBusDevice *dev = SYS_BUS_DEVICE(obj);
+ 
+     sysbus_init_irq(dev, &s->irq);
+-    memory_region_init_io(&s->mmio, OBJECT(s), &ser_ops, s,
++    memory_region_init_io(&s->mmio, obj, &ser_ops, s,
+                           "etraxfs-serial", R_MAX * 4);
+     sysbus_init_mmio(dev, &s->mmio);
+ 
+@@ -225,15 +226,12 @@ static int etraxfs_ser_init(SysBusDevice *dev)
+                               serial_can_receive, serial_receive,
+                               serial_event, s);
+     }
+-    return 0;
+ }
+ 
+ static void etraxfs_ser_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = etraxfs_ser_init;
+     dc->reset = etraxfs_ser_reset;
+     /* Reason: init() method uses qemu_char_get_next_serial() */
+     dc->cannot_instantiate_with_device_add_yet = true;
+@@ -243,6 +241,7 @@ static const TypeInfo etraxfs_ser_info = {
+     .name          = TYPE_ETRAX_FS_SERIAL,
+     .parent        = TYPE_SYS_BUS_DEVICE,
+     .instance_size = sizeof(ETRAXSerial),
++    .instance_init = etraxfs_ser_init,
+     .class_init    = etraxfs_ser_class_init,
+ };
+ 
+-- 
+2.1.4
+

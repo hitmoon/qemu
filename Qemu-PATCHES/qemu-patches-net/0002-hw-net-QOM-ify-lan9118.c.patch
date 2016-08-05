@@ -1,0 +1,96 @@
+From c87c1bc2cd6f586d3f7c13f48e02c374628a9486 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Fri, 25 Mar 2016 15:17:16 +0800
+Subject: [PATCH 2/9] hw/net: QOM'ify lan9118.c
+
+* Split the old SysBus init into an instance_init and a
+  DeviceClass::realize function
+* Drop the old SysBus init function and use instance_init
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/net/lan9118.c | 36 ++++++++++++++++++++----------------
+ 1 file changed, 20 insertions(+), 16 deletions(-)
+
+diff --git a/hw/net/lan9118.c b/hw/net/lan9118.c
+index 2052073..3070263 100644
+--- a/hw/net/lan9118.c
++++ b/hw/net/lan9118.c
+@@ -1319,19 +1319,32 @@ static NetClientInfo net_lan9118_info = {
+     .link_status_changed = lan9118_set_link,
+ };
+ 
+-static int lan9118_init1(SysBusDevice *sbd)
++static void lan9118_init1(Object *obj)
+ {
+-    DeviceState *dev = DEVICE(sbd);
+-    lan9118_state *s = LAN9118(dev);
++    lan9118_state *s = LAN9118(obj);
++    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+     QEMUBH *bh;
++
++    sysbus_init_mmio(sbd, &s->mmio);
++    sysbus_init_irq(sbd, &s->irq);
++    s->pmt_ctrl = 1;
++    s->txp = &s->tx_packet;
++    bh = qemu_bh_new(lan9118_tick, s);
++    s->timer = ptimer_init(bh);
++    ptimer_set_freq(s->timer, 10000);
++    ptimer_set_limit(s->timer, 0xffff, 1);
++}
++
++static void lan9118_realize(DeviceState *dev, Error **errp)
++{
++    lan9118_state *s = LAN9118(dev);
+     int i;
+     const MemoryRegionOps *mem_ops =
+             s->mode_16bit ? &lan9118_16bit_mem_ops : &lan9118_mem_ops;
+ 
+     memory_region_init_io(&s->mmio, OBJECT(dev), mem_ops, s,
+                           "lan9118-mmio", 0x100);
+-    sysbus_init_mmio(sbd, &s->mmio);
+-    sysbus_init_irq(sbd, &s->irq);
++
+     qemu_macaddr_default_if_unset(&s->conf.macaddr);
+ 
+     s->nic = qemu_new_nic(&net_lan9118_info, &s->conf,
+@@ -1341,15 +1354,6 @@ static int lan9118_init1(SysBusDevice *sbd)
+     for (i = 0; i < 6; i++) {
+         s->eeprom[i + 1] = s->conf.macaddr.a[i];
+     }
+-    s->pmt_ctrl = 1;
+-    s->txp = &s->tx_packet;
+-
+-    bh = qemu_bh_new(lan9118_tick, s);
+-    s->timer = ptimer_init(bh);
+-    ptimer_set_freq(s->timer, 10000);
+-    ptimer_set_limit(s->timer, 0xffff, 1);
+-
+-    return 0;
+ }
+ 
+ static Property lan9118_properties[] = {
+@@ -1361,18 +1365,18 @@ static Property lan9118_properties[] = {
+ static void lan9118_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = lan9118_init1;
+     dc->reset = lan9118_reset;
+     dc->props = lan9118_properties;
+     dc->vmsd = &vmstate_lan9118;
++    dc->realize = lan9118_realize;
+ }
+ 
+ static const TypeInfo lan9118_info = {
+     .name          = TYPE_LAN9118,
+     .parent        = TYPE_SYS_BUS_DEVICE,
+     .instance_size = sizeof(lan9118_state),
++    .instance_init = lan9118_init1,
+     .class_init    = lan9118_class_init,
+ };
+ 
+-- 
+2.1.4
+

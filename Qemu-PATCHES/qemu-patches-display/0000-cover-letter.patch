@@ -1,0 +1,25 @@
+From 98d5d0467cd31bdd236474454ef9bc4c4ba787c9 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Thu, 5 May 2016 10:59:32 +0800
+Subject: [PATCH RESEND 0/5] QOM'ify hw/display devices
+
+This patch set trys to QOM'ify hw/display files, see commit messages
+for more details.
+
+xiaoqiang zhao (5):
+  hw/display: QOM'ify exynos4210_fimd.c
+  hw/display: QOM'ify jazz_led.c
+  hw/display: QOM'ify milkymist-tmu2.c
+  hw/display: QOM'ify milkymist-vgafb.c
+  hw/display: QOM'ify pl110.c
+
+ hw/display/exynos4210_fimd.c | 19 ++++++++++++-------
+ hw/display/jazz_led.c        | 18 +++++++++++-------
+ hw/display/milkymist-tmu2.c  | 24 ++++++++++++++----------
+ hw/display/milkymist-vgafb.c | 16 ++++++++++------
+ hw/display/pl110.c           | 19 +++++++++----------
+ 5 files changed, 56 insertions(+), 40 deletions(-)
+
+-- 
+2.1.4
+

@@ -1,0 +1,32 @@
+From 1c8a7121c9e3f4db686457b5493e289044171f42 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Tue, 29 Mar 2016 15:35:09 +0800
+Subject: [PATCH v2 0/6] QOM'ify hw/char devices
+
+This patch set trys to QOM'ify hw/char files, see commit messages 
+for more details
+
+Changes in v2:
+* rename TYPE_SCLP_LM_CONSOLE to TYPE_SCLPLM_CONSOLE which is suggested by 
+  Cornelia Huck <cornelia.huck@de.ibm.com>
+* rebase on the current master
+
+xiaoqiang zhao (6):
+  hw/char: QOM'ify escc.c
+  hw/char: QOM'ify etraxfs_ser.c
+  hw/char: QOM'ify lm32_juart.c
+  hw/char: QOM'ify lm32_uart.c
+  hw/char: QOM'ify sclpconsole-lm.c
+  hw/char: QOM'ify sclpconsole.c
+
+ hw/char/escc.c           | 12 +++++-------
+ hw/char/etraxfs_ser.c    | 11 +++++------
+ hw/char/lm32_juart.c     |  9 +++------
+ hw/char/lm32_uart.c      | 12 +++++-------
+ hw/char/sclpconsole-lm.c | 14 +++++++++-----
+ hw/char/sclpconsole.c    | 12 ++++++++----
+ 6 files changed, 35 insertions(+), 35 deletions(-)
+
+-- 
+2.1.4
+

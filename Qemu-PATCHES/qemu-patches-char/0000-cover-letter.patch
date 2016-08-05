@@ -1,0 +1,27 @@
+From f2fcf0875826eb87331ab682d23d88c5bc71d5af Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Thu, 17 Mar 2016 17:09:40 +0800
+Subject: [PATCH 0/6] QOM'ify hw/char devices
+
+This patch set trys to QOM'ify hw/char files, see commit messages
+for more details
+
+xiaoqiang zhao (6):
+  hw/char: QOM'ify escc.c
+  hw/char: QOM'ify etraxfs_ser.c
+  hw/char: QOM'ify lm32_juart.c
+  hw/char: QOM'ify lm32_uart.c
+  hw/char: QOM'ify sclpconsole-lm.c
+  hw/char: QOM'ify sclpconsole.c
+
+ hw/char/escc.c           | 12 +++++-------
+ hw/char/etraxfs_ser.c    | 11 +++++------
+ hw/char/lm32_juart.c     |  9 +++------
+ hw/char/lm32_uart.c      | 12 +++++-------
+ hw/char/sclpconsole-lm.c | 14 +++++++++-----
+ hw/char/sclpconsole.c    | 12 ++++++++----
+ 6 files changed, 35 insertions(+), 35 deletions(-)
+
+-- 
+2.1.4
+

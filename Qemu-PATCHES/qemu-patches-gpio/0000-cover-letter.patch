@@ -1,0 +1,22 @@
+From 34b1a76d6368c3ffa4d07e230deffbc719bdaa41 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Tue, 7 Jun 2016 10:23:55 +0800
+Subject: [PATCH 0/4] *** SUBJECT HERE ***
+
+*** BLURB HERE ***
+
+xiaoqiang zhao (4):
+  hw/gpio: QOM'ify mpc8xxx.c
+  hw/gpio: QOM'ify omap_gpio.c
+  hw/gpio: QOM'ify pl061.c
+  hw/gpio: QOM'ify zaurus.c
+
+ hw/gpio/mpc8xxx.c   | 20 ++++++++++--------
+ hw/gpio/omap_gpio.c | 61 +++++++++++++++++++++++++++--------------------------
+ hw/gpio/pl061.c     | 24 +++++++--------------
+ hw/gpio/zaurus.c    | 14 ++++++------
+ 4 files changed, 56 insertions(+), 63 deletions(-)
+
+-- 
+2.1.4
+

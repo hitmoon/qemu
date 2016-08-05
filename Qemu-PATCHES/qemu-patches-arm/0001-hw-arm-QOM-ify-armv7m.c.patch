@@ -1,0 +1,56 @@
+From 116c800952a28084267ad12c725caf9ad84602e1 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Fri, 4 Mar 2016 17:13:03 +0800
+Subject: [PATCH 1/9] hw/arm: QOM'ify armv7m.c
+
+Drop the use of old SysBus init function and use instance_init
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/arm/armv7m.c | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/hw/arm/armv7m.c b/hw/arm/armv7m.c
+index ed7d97f..139247e 100644
+--- a/hw/arm/armv7m.c
++++ b/hw/arm/armv7m.c
+@@ -129,14 +129,14 @@ typedef struct {
+     uint32_t base;
+ } BitBandState;
+ 
+-static int bitband_init(SysBusDevice *dev)
++static void bitband_init(Object *obj)
+ {
+-    BitBandState *s = BITBAND(dev);
++    BitBandState *s = BITBAND(obj);
++    SysBusDevice *dev = SYS_BUS_DEVICE(obj);
+ 
+-    memory_region_init_io(&s->iomem, OBJECT(s), &bitband_ops, &s->base,
++    memory_region_init_io(&s->iomem, obj, &bitband_ops, &s->base,
+                           "bitband", 0x02000000);
+     sysbus_init_mmio(dev, &s->iomem);
+-    return 0;
+ }
+ 
+ static void armv7m_bitband_init(void)
+@@ -241,9 +241,7 @@ static Property bitband_properties[] = {
+ static void bitband_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = bitband_init;
+     dc->props = bitband_properties;
+ }
+ 
+@@ -251,6 +249,7 @@ static const TypeInfo bitband_info = {
+     .name          = TYPE_BITBAND,
+     .parent        = TYPE_SYS_BUS_DEVICE,
+     .instance_size = sizeof(BitBandState),
++    .instance_init = bitband_init,
+     .class_init    = bitband_class_init,
+ };
+ 
+-- 
+2.1.4
+

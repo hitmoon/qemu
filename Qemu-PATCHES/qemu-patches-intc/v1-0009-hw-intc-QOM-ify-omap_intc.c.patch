@@ -1,0 +1,157 @@
+From 5f807c5f36068cec7f4a04355ee03c4e60960bc3 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Thu, 5 May 2016 11:20:06 +0800
+Subject: [PATCH v1 9/9] hw/intc: QOM'ify omap_intc.c
+
+* Split the old SysBus init into an instance_init and a
+  DeviceClass::realize function
+* Drop the old SysBus init function and use instance_init
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/intc/omap_intc.c | 64 +++++++++++++++++++++++++++++++----------------------
+ 1 file changed, 38 insertions(+), 26 deletions(-)
+
+diff --git a/hw/intc/omap_intc.c b/hw/intc/omap_intc.c
+index 3368825..877be67 100644
+--- a/hw/intc/omap_intc.c
++++ b/hw/intc/omap_intc.c
+@@ -22,6 +22,7 @@
+ #include "hw/arm/omap.h"
+ #include "hw/sysbus.h"
+ #include "qemu/error-report.h"
++#include "qapi/error.h"
+ 
+ /* Interrupt Handlers */
+ struct omap_intr_handler_bank_s {
+@@ -363,23 +364,28 @@ static void omap_inth_reset(DeviceState *dev)
+     qemu_set_irq(s->parent_intr[1], 0);
+ }
+ 
+-static int omap_intc_init(SysBusDevice *sbd)
++static void omap_intc_init(Object *obj)
+ {
+-    DeviceState *dev = DEVICE(sbd);
+-    struct omap_intr_handler_s *s = OMAP_INTC(dev);
++    DeviceState *dev = DEVICE(obj);
++    struct omap_intr_handler_s *s = OMAP_INTC(obj);
++    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+ 
+-    if (!s->iclk) {
+-        error_report("omap-intc: clk not connected");
+-        return -1;
+-    }
+     s->nbanks = 1;
+     sysbus_init_irq(sbd, &s->parent_intr[0]);
+     sysbus_init_irq(sbd, &s->parent_intr[1]);
+     qdev_init_gpio_in(dev, omap_set_intr, s->nbanks * 32);
+-    memory_region_init_io(&s->mmio, OBJECT(s), &omap_inth_mem_ops, s,
++    memory_region_init_io(&s->mmio, obj, &omap_inth_mem_ops, s,
+                           "omap-intc", s->size);
+     sysbus_init_mmio(sbd, &s->mmio);
+-    return 0;
++}
++
++static void omap_intc_realize(DeviceState *dev, Error **errp)
++{
++    struct omap_intr_handler_s *s = OMAP_INTC(dev);
++
++    if (!s->iclk) {
++        error_setg(errp, "omap-intc: clk not connected");
++    }
+ }
+ 
+ static Property omap_intc_properties[] = {
+@@ -391,18 +397,18 @@ static Property omap_intc_properties[] = {
+ static void omap_intc_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = omap_intc_init;
+     dc->reset = omap_inth_reset;
+     dc->props = omap_intc_properties;
+     /* Reason: pointer property "clk" */
+     dc->cannot_instantiate_with_device_add_yet = true;
++    dc->realize = omap_intc_realize;
+ }
+ 
+ static const TypeInfo omap_intc_info = {
+     .name          = "omap-intc",
+     .parent        = TYPE_OMAP_INTC,
++    .instance_init = omap_intc_init,
+     .class_init    = omap_intc_class_init,
+ };
+ 
+@@ -605,28 +611,34 @@ static const MemoryRegionOps omap2_inth_mem_ops = {
+     },
+ };
+ 
+-static int omap2_intc_init(SysBusDevice *sbd)
++static void omap2_intc_init(Object *obj)
+ {
+-    DeviceState *dev = DEVICE(sbd);
+-    struct omap_intr_handler_s *s = OMAP_INTC(dev);
++    DeviceState *dev = DEVICE(obj);
++    struct omap_intr_handler_s *s = OMAP_INTC(obj);
++    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+ 
+-    if (!s->iclk) {
+-        error_report("omap2-intc: iclk not connected");
+-        return -1;
+-    }
+-    if (!s->fclk) {
+-        error_report("omap2-intc: fclk not connected");
+-        return -1;
+-    }
+     s->level_only = 1;
+     s->nbanks = 3;
+     sysbus_init_irq(sbd, &s->parent_intr[0]);
+     sysbus_init_irq(sbd, &s->parent_intr[1]);
+     qdev_init_gpio_in(dev, omap_set_intr_noedge, s->nbanks * 32);
+-    memory_region_init_io(&s->mmio, OBJECT(s), &omap2_inth_mem_ops, s,
++    memory_region_init_io(&s->mmio, obj, &omap2_inth_mem_ops, s,
+                           "omap2-intc", 0x1000);
+     sysbus_init_mmio(sbd, &s->mmio);
+-    return 0;
++}
++
++static void omap2_intc_realize(DeviceState *dev, Error **errp)
++{
++    struct omap_intr_handler_s *s = OMAP_INTC(dev);
++
++    if (!s->iclk) {
++        error_setg(errp, "omap2-intc: iclk not connected");
++        return;
++    }
++    if (!s->fclk) {
++        error_setg(errp, "omap2-intc: fclk not connected");
++        return;
++    }
+ }
+ 
+ static Property omap2_intc_properties[] = {
+@@ -640,18 +652,18 @@ static Property omap2_intc_properties[] = {
+ static void omap2_intc_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = omap2_intc_init;
+     dc->reset = omap_inth_reset;
+     dc->props = omap2_intc_properties;
+     /* Reason: pointer property "iclk", "fclk" */
+     dc->cannot_instantiate_with_device_add_yet = true;
++    dc->realize = omap2_intc_realize;
+ }
+ 
+ static const TypeInfo omap2_intc_info = {
+     .name          = "omap2-intc",
+     .parent        = TYPE_OMAP_INTC,
++    .instance_init = omap2_intc_init,
+     .class_init    = omap2_intc_class_init,
+ };
+ 
+-- 
+2.1.4
+

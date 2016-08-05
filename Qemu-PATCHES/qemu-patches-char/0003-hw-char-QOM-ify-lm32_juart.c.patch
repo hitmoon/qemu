@@ -1,0 +1,57 @@
+From c8768bb1d8dec1387b01cb486f392a85cda83d8c Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Thu, 17 Mar 2016 11:26:18 +0800
+Subject: [PATCH 3/6] hw/char: QOM'ify lm32_juart.c
+
+Drop the old SysBus init function and use instance_init
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/char/lm32_juart.c | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
+
+diff --git a/hw/char/lm32_juart.c b/hw/char/lm32_juart.c
+index 5bf8acf..cd8d0ee 100644
+--- a/hw/char/lm32_juart.c
++++ b/hw/char/lm32_juart.c
+@@ -114,17 +114,15 @@ static void juart_reset(DeviceState *d)
+     s->jrx = 0;
+ }
+ 
+-static int lm32_juart_init(SysBusDevice *dev)
++static void lm32_juart_init(Object *obj)
+ {
+-    LM32JuartState *s = LM32_JUART(dev);
++    LM32JuartState *s = LM32_JUART(obj);
+ 
+     /* FIXME use a qdev chardev prop instead of qemu_char_get_next_serial() */
+     s->chr = qemu_char_get_next_serial();
+     if (s->chr) {
+         qemu_chr_add_handlers(s->chr, juart_can_rx, juart_rx, juart_event, s);
+     }
+-
+-    return 0;
+ }
+ 
+ static const VMStateDescription vmstate_lm32_juart = {
+@@ -141,9 +139,7 @@ static const VMStateDescription vmstate_lm32_juart = {
+ static void lm32_juart_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = lm32_juart_init;
+     dc->reset = juart_reset;
+     dc->vmsd = &vmstate_lm32_juart;
+     /* Reason: init() method uses qemu_char_get_next_serial() */
+@@ -154,6 +150,7 @@ static const TypeInfo lm32_juart_info = {
+     .name          = TYPE_LM32_JUART,
+     .parent        = TYPE_SYS_BUS_DEVICE,
+     .instance_size = sizeof(LM32JuartState),
++    .instance_init = lm32_juart_init,
+     .class_init    = lm32_juart_class_init,
+ };
+ 
+-- 
+2.1.4
+

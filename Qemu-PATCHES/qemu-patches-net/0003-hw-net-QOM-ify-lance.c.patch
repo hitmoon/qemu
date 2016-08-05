@@ -1,0 +1,90 @@
+From 54eb6a304ad886e5e71ae526325718fb32afae7f Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Fri, 25 Mar 2016 15:17:57 +0800
+Subject: [PATCH 3/9] hw/net: QOM'ify lance.c
+
+* Split the old SysBus init into an instance_init and a
+  DeviceClass::realize function
+* Drop the old SysBus init function and use instance_init
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/net/lance.c | 31 +++++++++++++++----------------
+ 1 file changed, 15 insertions(+), 16 deletions(-)
+
+diff --git a/hw/net/lance.c b/hw/net/lance.c
+index 6253d21..3da5eb3 100644
+--- a/hw/net/lance.c
++++ b/hw/net/lance.c
+@@ -109,13 +109,21 @@ static const VMStateDescription vmstate_lance = {
+     }
+ };
+ 
+-static int lance_init(SysBusDevice *sbd)
++static void lance_reset(DeviceState *dev)
+ {
+-    DeviceState *dev = DEVICE(sbd);
+     SysBusPCNetState *d = SYSBUS_PCNET(dev);
++
++    pcnet_h_reset(&d->state);
++}
++
++static void lance_instance_init(Object *obj)
++{
++    DeviceState *dev = DEVICE(obj);
++    SysBusPCNetState *d = SYSBUS_PCNET(obj);
+     PCNetState *s = &d->state;
++    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+ 
+-    memory_region_init_io(&s->mmio, OBJECT(d), &lance_mem_ops, d,
++    memory_region_init_io(&s->mmio, obj, &lance_mem_ops, d,
+                           "lance-mmio", 4);
+ 
+     qdev_init_gpio_in(dev, parent_lance_reset, 1);
+@@ -127,24 +135,16 @@ static int lance_init(SysBusDevice *sbd)
+     s->phys_mem_read = ledma_memory_read;
+     s->phys_mem_write = ledma_memory_write;
+     pcnet_common_init(dev, s, &net_lance_info);
+-    return 0;
+ }
+ 
+-static void lance_reset(DeviceState *dev)
++static void lance_realize(DeviceState *dev, Error **errp)
+ {
+     SysBusPCNetState *d = SYSBUS_PCNET(dev);
+-
+-    pcnet_h_reset(&d->state);
+-}
+-
+-static void lance_instance_init(Object *obj)
+-{
+-    SysBusPCNetState *d = SYSBUS_PCNET(obj);
+     PCNetState *s = &d->state;
+ 
+-    device_add_bootindex_property(obj, &s->conf.bootindex,
++    device_add_bootindex_property(OBJECT(dev), &s->conf.bootindex,
+                                   "bootindex", "/ethernet-phy@0",
+-                                  DEVICE(obj), NULL);
++                                  dev, NULL);
+ }
+ 
+ static Property lance_properties[] = {
+@@ -156,14 +156,13 @@ static Property lance_properties[] = {
+ static void lance_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = lance_init;
+     set_bit(DEVICE_CATEGORY_NETWORK, dc->categories);
+     dc->fw_name = "ethernet";
+     dc->reset = lance_reset;
+     dc->vmsd = &vmstate_lance;
+     dc->props = lance_properties;
++    dc->realize = lance_realize;
+     /* Reason: pointer property "dma" */
+     dc->cannot_instantiate_with_device_add_yet = true;
+ }
+-- 
+2.1.4
+

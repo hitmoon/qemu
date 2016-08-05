@@ -1,0 +1,58 @@
+From 922a2f1ab1135b2e0faf39d248203c8088e184fa Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Thu, 25 Feb 2016 15:14:35 +0800
+Subject: [PATCH v5 0/8] QOM'ify hw/timer/*
+
+This patch series QOM'ify timer code under hw/timer directory.
+Main idea is to split the initfn's work, some to TypeInfo.instance_init
+and some is placed in DeviceClass::realize.
+Drop the use of SysBusDeviceClass::init if possible.
+
+Patch 3,4 (m48t59) has been tested in a sparc vm with debian linux guest
+and savevm/loadvm looks fine.
+
+Comments from the relevant maintainers are needed!
+
+changes in v5:
+* drop patch 'hw/timer: QOM'ify tusb6010'
+* fix minor errors in grlib_gptimer.c
+* correct the usage of vmstate for M48txxISAState and M48txxSysBusState
+
+
+changes in v4: 
+* correct some misused "Reviewed-by" tags
+* fix 'make check' fail case in the "/arm/device/introspect/concrete"
+  test in tusb6010.c 
+
+changes in v3: 
+* remove unnecessary OBJECT cast
+* refine some commit message
+* use DeviceClass::vmsd instead of vmstate_register to register
+  the VMState if possible
+
+changes in v2: 
+fix a stupid typo (timmer->timer)
+
+
+xiaoqiang zhao (8):
+  hw/timer: QOM'ify etraxfs_timer
+  hw/timer: QOM'ify lm32_timer
+  hw/timer: QOM'ify m48txx_sysbus (pass 1)
+  hw/timer: QOM'ify m48txx_sysbus (pass 2)
+  hw/timer: QOM'ify milkymist_sysctl
+  hw/timer: QOM'ify puv3_ost
+  hw/timer: QOM'ify slavio_timer
+  hw/timer: QOM'ify grlib_gptimer
+
+ hw/timer/etraxfs_timer.c    | 14 +++++------
+ hw/timer/grlib_gptimer.c    | 32 ++++++++++++++----------
+ hw/timer/lm32_timer.c       | 19 +++++++++------
+ hw/timer/m48t59.c           | 59 ++++++++++++++++++++++++++++++---------------
+ hw/timer/milkymist-sysctl.c | 21 ++++++++++------
+ hw/timer/puv3_ost.c         | 18 ++++----------
+ hw/timer/slavio_timer.c     | 12 ++++-----
+ 7 files changed, 101 insertions(+), 74 deletions(-)
+
+-- 
+2.1.4
+

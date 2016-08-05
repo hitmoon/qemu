@@ -1,0 +1,68 @@
+From 98c73d579ee21cb43a8a6de1228ae51885d1bca8 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Tue, 16 Feb 2016 17:55:41 +0800
+Subject: [PATCH v6 7/8] hw/timer: QOM'ify slavio_timer
+
+rename slavio_timer_init1 to slavio_timer_init and assign
+it to slavio_timer_info.instance_init, then we drop the
+SysBusDeviceClass::init
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/timer/slavio_timer.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/hw/timer/slavio_timer.c b/hw/timer/slavio_timer.c
+index fb3e08b..b2c9364 100644
+--- a/hw/timer/slavio_timer.c
++++ b/hw/timer/slavio_timer.c
+@@ -373,9 +373,10 @@ static void slavio_timer_reset(DeviceState *d)
+     s->cputimer_mode = 0;
+ }
+ 
+-static int slavio_timer_init1(SysBusDevice *dev)
++static void slavio_timer_init(Object *obj)
+ {
+-    SLAVIO_TIMERState *s = SLAVIO_TIMER(dev);
++    SLAVIO_TIMERState *s = SLAVIO_TIMER(obj);
++    SysBusDevice *dev = SYS_BUS_DEVICE(obj);
+     QEMUBH *bh;
+     unsigned int i;
+     TimerContext *tc;
+@@ -394,14 +395,12 @@ static int slavio_timer_init1(SysBusDevice *dev)
+ 
+         size = i == 0 ? SYS_TIMER_SIZE : CPU_TIMER_SIZE;
+         snprintf(timer_name, sizeof(timer_name), "timer-%i", i);
+-        memory_region_init_io(&tc->iomem, OBJECT(s), &slavio_timer_mem_ops, tc,
++        memory_region_init_io(&tc->iomem, obj, &slavio_timer_mem_ops, tc,
+                               timer_name, size);
+         sysbus_init_mmio(dev, &tc->iomem);
+ 
+         sysbus_init_irq(dev, &s->cputimer[i].irq);
+     }
+-
+-    return 0;
+ }
+ 
+ static Property slavio_timer_properties[] = {
+@@ -412,9 +411,7 @@ static Property slavio_timer_properties[] = {
+ static void slavio_timer_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = slavio_timer_init1;
+     dc->reset = slavio_timer_reset;
+     dc->vmsd = &vmstate_slavio_timer;
+     dc->props = slavio_timer_properties;
+@@ -424,6 +421,7 @@ static const TypeInfo slavio_timer_info = {
+     .name          = TYPE_SLAVIO_TIMER,
+     .parent        = TYPE_SYS_BUS_DEVICE,
+     .instance_size = sizeof(SLAVIO_TIMERState),
++    .instance_init = slavio_timer_init,
+     .class_init    = slavio_timer_class_init,
+ };
+ 
+-- 
+2.1.4
+

@@ -1,0 +1,78 @@
+From e66a7b4eb75b5cc3587794e4f86924e7651ade31 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Fri, 25 Mar 2016 15:27:49 +0800
+Subject: [PATCH 9/9] hw/net: QOM'ify xgmac.c
+
+* Split the old SysBus init into an instance_init and a
+  DeviceClass::realize function
+* Drop the old SysBus init function and use instance_init
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/net/xgmac.c | 19 +++++++++++--------
+ 1 file changed, 11 insertions(+), 8 deletions(-)
+
+diff --git a/hw/net/xgmac.c b/hw/net/xgmac.c
+index 0c5f793..dbc931e 100644
+--- a/hw/net/xgmac.c
++++ b/hw/net/xgmac.c
+@@ -376,17 +376,22 @@ static NetClientInfo net_xgmac_enet_info = {
+     .receive = eth_rx,
+ };
+ 
+-static int xgmac_enet_init(SysBusDevice *sbd)
++static void xgmac_enet_init(Object *obj)
+ {
+-    DeviceState *dev = DEVICE(sbd);
+-    XgmacState *s = XGMAC(dev);
++    XgmacState *s = XGMAC(obj);
++    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+ 
+-    memory_region_init_io(&s->iomem, OBJECT(s), &enet_mem_ops, s,
++    memory_region_init_io(&s->iomem, obj, &enet_mem_ops, s,
+                           "xgmac", 0x1000);
+     sysbus_init_mmio(sbd, &s->iomem);
+     sysbus_init_irq(sbd, &s->sbd_irq);
+     sysbus_init_irq(sbd, &s->pmt_irq);
+     sysbus_init_irq(sbd, &s->mci_irq);
++}
++
++static void xgmac_enet_realize(DeviceState *dev, Error **errp)
++{
++    XgmacState *s = XGMAC(dev);
+ 
+     qemu_macaddr_default_if_unset(&s->conf.macaddr);
+     s->nic = qemu_new_nic(&net_xgmac_enet_info, &s->conf,
+@@ -399,8 +404,6 @@ static int xgmac_enet_init(SysBusDevice *sbd)
+                                  (s->conf.macaddr.a[2] << 16) |
+                                  (s->conf.macaddr.a[1] << 8) |
+                                   s->conf.macaddr.a[0];
+-
+-    return 0;
+ }
+ 
+ static Property xgmac_properties[] = {
+@@ -410,18 +413,18 @@ static Property xgmac_properties[] = {
+ 
+ static void xgmac_enet_class_init(ObjectClass *klass, void *data)
+ {
+-    SysBusDeviceClass *sbc = SYS_BUS_DEVICE_CLASS(klass);
+     DeviceClass *dc = DEVICE_CLASS(klass);
+ 
+-    sbc->init = xgmac_enet_init;
+     dc->vmsd = &vmstate_xgmac;
+     dc->props = xgmac_properties;
++    dc->realize = xgmac_enet_realize;
+ }
+ 
+ static const TypeInfo xgmac_enet_info = {
+     .name          = TYPE_XGMAC,
+     .parent        = TYPE_SYS_BUS_DEVICE,
+     .instance_size = sizeof(XgmacState),
++    .instance_init = xgmac_enet_init,
+     .class_init    = xgmac_enet_class_init,
+ };
+ 
+-- 
+2.1.4
+

@@ -1,0 +1,103 @@
+From 81cd0397faf550f853d806e2b6bcae75bec88a95 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Fri, 4 Mar 2016 17:14:39 +0800
+Subject: [PATCH 6/9] hw/arm: QOM'ify spitz.c
+
+Drop the use of old SysBus init function and use instance_init
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/arm/spitz.c | 23 +++++++++--------------
+ 1 file changed, 9 insertions(+), 14 deletions(-)
+
+diff --git a/hw/arm/spitz.c b/hw/arm/spitz.c
+index 607cb58..670acc5 100644
+--- a/hw/arm/spitz.c
++++ b/hw/arm/spitz.c
+@@ -163,9 +163,10 @@ static void sl_flash_register(PXA2xxState *cpu, int size)
+     sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0, FLASH_BASE);
+ }
+ 
+-static int sl_nand_init(SysBusDevice *dev)
++static void sl_nand_init(Object *obj)
+ {
+-    SLNANDState *s = SL_NAND(dev);
++    SLNANDState *s = SL_NAND(obj);
++    SysBusDevice *dev = SYS_BUS_DEVICE(obj);
+     DriveInfo *nand;
+ 
+     s->ctl = 0;
+@@ -174,10 +175,8 @@ static int sl_nand_init(SysBusDevice *dev)
+     s->nand = nand_init(nand ? blk_by_legacy_dinfo(nand) : NULL,
+                         s->manf_id, s->chip_id);
+ 
+-    memory_region_init_io(&s->iomem, OBJECT(s), &sl_ops, s, "sl", 0x40);
++    memory_region_init_io(&s->iomem, obj, &sl_ops, s, "sl", 0x40);
+     sysbus_init_mmio(dev, &s->iomem);
+-
+-    return 0;
+ }
+ 
+ /* Spitz Keyboard */
+@@ -500,10 +499,10 @@ static void spitz_keyboard_register(PXA2xxState *cpu)
+     qemu_add_kbd_event_handler(spitz_keyboard_handler, s);
+ }
+ 
+-static int spitz_keyboard_init(SysBusDevice *sbd)
++static void spitz_keyboard_init(Object *obj)
+ {
+-    DeviceState *dev = DEVICE(sbd);
+-    SpitzKeyboardState *s = SPITZ_KEYBOARD(dev);
++    DeviceState *dev = DEVICE(obj);
++    SpitzKeyboardState *s = SPITZ_KEYBOARD(obj);
+     int i, j;
+ 
+     for (i = 0; i < 0x80; i ++)
+@@ -518,8 +517,6 @@ static int spitz_keyboard_init(SysBusDevice *sbd)
+     s->kbdtimer = timer_new_ns(QEMU_CLOCK_VIRTUAL, spitz_keyboard_tick, s);
+     qdev_init_gpio_in(dev, spitz_keyboard_strobe, SPITZ_KEY_STROBE_NUM);
+     qdev_init_gpio_out(dev, s->sense, SPITZ_KEY_SENSE_NUM);
+-
+-    return 0;
+ }
+ 
+ /* LCD backlight controller */
+@@ -1064,9 +1061,7 @@ static Property sl_nand_properties[] = {
+ static void sl_nand_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = sl_nand_init;
+     dc->vmsd = &vmstate_sl_nand_info;
+     dc->props = sl_nand_properties;
+     /* Reason: init() method uses drive_get() */
+@@ -1077,6 +1072,7 @@ static const TypeInfo sl_nand_info = {
+     .name          = TYPE_SL_NAND,
+     .parent        = TYPE_SYS_BUS_DEVICE,
+     .instance_size = sizeof(SLNANDState),
++    .instance_init = sl_nand_init,
+     .class_init    = sl_nand_class_init,
+ };
+ 
+@@ -1096,9 +1092,7 @@ static VMStateDescription vmstate_spitz_kbd = {
+ static void spitz_keyboard_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = spitz_keyboard_init;
+     dc->vmsd = &vmstate_spitz_kbd;
+ }
+ 
+@@ -1106,6 +1100,7 @@ static const TypeInfo spitz_keyboard_info = {
+     .name          = TYPE_SPITZ_KEYBOARD,
+     .parent        = TYPE_SYS_BUS_DEVICE,
+     .instance_size = sizeof(SpitzKeyboardState),
++    .instance_init = spitz_keyboard_init,
+     .class_init    = spitz_keyboard_class_init,
+ };
+ 
+-- 
+2.1.4
+

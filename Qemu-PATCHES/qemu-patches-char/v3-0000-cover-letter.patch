@@ -1,0 +1,39 @@
+From f354c2e006bef5cb45682be637824e7c33b7a617 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Fri, 13 May 2016 10:47:33 +0800
+Subject: [PATCH v3 0/4] QOM'ify hw/char devices
+
+This patch set trys to QOM'ify hw/char files, see commit messages 
+for more details
+
+Note: patches
+  hw/char: QOM'ify sclpconsole-lm.c
+  hw/char: QOM'ify sclpconsole.c
+of v2 has been taken by Cornelia Huck
+
+Thanks Paolo <pbonzini@redhat.com> for your suggestions.
+
+Changes in v3:
+* use chardev property instead of qemu_char_get_next_serial
+* call the functions that touch globals in the realize callback
+
+Changes in v2:
+* rename TYPE_SCLP_LM_CONSOLE to TYPE_SCLPLM_CONSOLE which is suggested by 
+  Cornelia Huck <cornelia.huck@de.ibm.com>
+* rebase on the current master
+
+xiaoqiang zhao (4):
+  hw/char: QOM'ify escc.c
+  hw/char: QOM'ify etraxfs_ser.c
+  hw/char: QOM'ify lm32_juart.c
+  hw/char: QOM'ify lm32_uart.c
+
+ hw/char/escc.c        | 30 +++++++++++++++++++-----------
+ hw/char/etraxfs_ser.c | 27 +++++++++++++++++----------
+ hw/char/lm32_juart.c  | 17 ++++++++---------
+ hw/char/lm32_uart.c   | 28 +++++++++++++++++-----------
+ 4 files changed, 61 insertions(+), 41 deletions(-)
+
+-- 
+2.1.4
+

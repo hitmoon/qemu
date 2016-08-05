@@ -1,0 +1,84 @@
+From de9d87a2f8395a3be9e451b8698d2393c1a30434 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Tue, 24 May 2016 10:17:31 +0800
+Subject: [PATCH v6 5/5] hw/char: QOM'ify milkymist-uart.c
+
+drop the qemu_char_get_next_serial and use chardev prop instead
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/char/milkymist-uart.c | 10 ++++++----
+ hw/lm32/milkymist-hw.h   |  4 +++-
+ hw/lm32/milkymist.c      |  2 +-
+ 3 files changed, 10 insertions(+), 6 deletions(-)
+
+diff --git a/hw/char/milkymist-uart.c b/hw/char/milkymist-uart.c
+index 03b36b2..72f8484 100644
+--- a/hw/char/milkymist-uart.c
++++ b/hw/char/milkymist-uart.c
+@@ -200,8 +200,6 @@ static void milkymist_uart_realize(DeviceState *dev, Error **errp)
+ {
+     MilkymistUartState *s = MILKYMIST_UART(dev);
+ 
+-    /* FIXME use a qdev chardev prop instead of qemu_char_get_next_serial() */
+-    s->chr = qemu_char_get_next_serial();
+     if (s->chr) {
+         qemu_chr_add_handlers(s->chr, uart_can_rx, uart_rx, uart_event, s);
+     }
+@@ -229,6 +227,11 @@ static const VMStateDescription vmstate_milkymist_uart = {
+     }
+ };
+ 
++static Property milkymist_uart_properties[] = {
++    DEFINE_PROP_CHR("chardev", MilkymistUartState, chr),
++    DEFINE_PROP_END_OF_LIST(),
++};
++
+ static void milkymist_uart_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+@@ -236,8 +239,7 @@ static void milkymist_uart_class_init(ObjectClass *klass, void *data)
+     dc->realize = milkymist_uart_realize;
+     dc->reset = milkymist_uart_reset;
+     dc->vmsd = &vmstate_milkymist_uart;
+-    /* Reason: realize() method uses qemu_char_get_next_serial() */
+-    dc->cannot_instantiate_with_device_add_yet = true;
++    dc->props = milkymist_uart_properties;
+ }
+ 
+ static const TypeInfo milkymist_uart_info = {
+diff --git a/hw/lm32/milkymist-hw.h b/hw/lm32/milkymist-hw.h
+index f857d28..eb6a3a2 100644
+--- a/hw/lm32/milkymist-hw.h
++++ b/hw/lm32/milkymist-hw.h
+@@ -5,11 +5,13 @@
+ #include "net/net.h"
+ 
+ static inline DeviceState *milkymist_uart_create(hwaddr base,
+-        qemu_irq irq)
++                                                 qemu_irq irq,
++                                                 CharDriverState *chr)
+ {
+     DeviceState *dev;
+ 
+     dev = qdev_create(NULL, "milkymist-uart");
++    qdev_prop_set_chr(dev, "chardev", chr);
+     qdev_init_nofail(dev);
+     sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0, base);
+     sysbus_connect_irq(SYS_BUS_DEVICE(dev), 0, irq);
+diff --git a/hw/lm32/milkymist.c b/hw/lm32/milkymist.c
+index ebd8a3c..5cae0f1 100644
+--- a/hw/lm32/milkymist.c
++++ b/hw/lm32/milkymist.c
+@@ -159,7 +159,7 @@ milkymist_init(MachineState *machine)
+     }
+     g_free(bios_filename);
+ 
+-    milkymist_uart_create(0x60000000, irq[0]);
++    milkymist_uart_create(0x60000000, irq[0], serial_hds[0]);
+     milkymist_sysctl_create(0x60001000, irq[1], irq[2], irq[3],
+             80000000, 0x10014d31, 0x0000041f, 0x00000001);
+     milkymist_hpdmc_create(0x60002000);
+-- 
+2.1.4
+

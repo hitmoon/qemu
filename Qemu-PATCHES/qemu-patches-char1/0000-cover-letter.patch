@@ -1,0 +1,52 @@
+From c5c2415314fb52b815ae3a03ba4bb3b649f41acb Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Wed, 25 May 2016 18:37:07 +0800
+Subject: [PATCH 0/6] Drop the qemu_char_get_next_serial function
+
+This patch series's main idea is to drop the use of
+qemu_char_get_next_serial. patches 1-5 QOM'ify the related 
+device model and the affected board code. Most of them
+are arm related. The patch 6 get rid of the function from
+the code base.
+
+I only test the code with ARM versatilepb machine. The other
+machine need test!
+
+xiaoqiang zhao (6):
+  hw/char: QOM'ify pl011 model
+  hw/char: QOM'ify cadence_uart model
+  hw/char: QOM'ify digic-uart model
+  hw/char: QOM'ify stm32f2xx_usart model
+  hw/char: QOM'ify xilinx_uartlite model
+  char: get rid of qemu_char_get_next_serial
+
+ hw/arm/bcm2835_peripherals.c             | 16 ++--------
+ hw/arm/digic.c                           |  2 ++
+ hw/arm/highbank.c                        |  3 +-
+ hw/arm/integratorcp.c                    |  5 +--
+ hw/arm/realview.c                        |  9 +++---
+ hw/arm/stellaris.c                       |  6 ++--
+ hw/arm/stm32f205_soc.c                   |  1 +
+ hw/arm/versatilepb.c                     |  9 +++---
+ hw/arm/vexpress.c                        |  9 +++---
+ hw/arm/virt.c                            |  1 +
+ hw/arm/xilinx_zynq.c                     |  5 +--
+ hw/arm/xlnx-zynqmp.c                     |  1 +
+ hw/char/cadence_uart.c                   | 13 ++++----
+ hw/char/digic-uart.c                     | 10 +++---
+ hw/char/pl011.c                          | 11 ++++---
+ hw/char/stm32f2xx_usart.c                | 11 ++++---
+ hw/char/xilinx_uartlite.c                | 10 +++---
+ hw/microblaze/petalogix_s3adsp1800_mmu.c |  5 +--
+ include/hw/char/cadence_uart.h           | 17 +++++++++++
+ include/hw/char/pl011.h                  | 52 ++++++++++++++++++++++++++++++++
+ include/hw/char/xilinx_uartlite.h        | 35 +++++++++++++++++++++
+ include/sysemu/char.h                    |  1 -
+ qemu-char.c                              | 16 ----------
+ 23 files changed, 173 insertions(+), 75 deletions(-)
+ create mode 100644 include/hw/char/pl011.h
+ create mode 100644 include/hw/char/xilinx_uartlite.h
+
+-- 
+2.1.4
+

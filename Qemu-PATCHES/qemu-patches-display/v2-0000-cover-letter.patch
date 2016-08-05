@@ -1,0 +1,29 @@
+From 8c009c29a6c3d7803334097c62d3863ce6293cab Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Fri, 6 May 2016 18:51:52 +0800
+Subject: [PATCH v2 0/5] QOM'ify hw/display devices
+
+This patch set trys to QOM'ify hw/display files, see commit messages
+for more details.
+
+v1 -> v2:
+ * fix a version variable override problem in pl110.c
+ * remove the trailing punctuation in error_setg message
+
+xiaoqiang zhao (5):
+  hw/display: QOM'ify exynos4210_fimd.c
+  hw/display: QOM'ify jazz_led.c
+  hw/display: QOM'ify milkymist-tmu2.c
+  hw/display: QOM'ify milkymist-vgafb.c
+  hw/display: QOM'ify pl110.c
+
+ hw/display/exynos4210_fimd.c | 19 ++++++++++++-------
+ hw/display/jazz_led.c        | 18 +++++++++++-------
+ hw/display/milkymist-tmu2.c  | 24 ++++++++++++++----------
+ hw/display/milkymist-vgafb.c | 16 ++++++++++------
+ hw/display/pl110.c           | 29 +++++++++++++++--------------
+ 5 files changed, 62 insertions(+), 44 deletions(-)
+
+-- 
+2.1.4
+

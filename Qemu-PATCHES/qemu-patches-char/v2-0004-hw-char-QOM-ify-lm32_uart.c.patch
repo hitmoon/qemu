@@ -1,0 +1,64 @@
+From 91120df8639523270ad2f71a4905bd1d404e57a6 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Thu, 17 Mar 2016 11:26:25 +0800
+Subject: [PATCH v2 4/6] hw/char: QOM'ify lm32_uart.c
+
+Drop the old SysBus init function and use instance_init
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/char/lm32_uart.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/hw/char/lm32_uart.c b/hw/char/lm32_uart.c
+index 036813d..f29054b 100644
+--- a/hw/char/lm32_uart.c
++++ b/hw/char/lm32_uart.c
+@@ -249,13 +249,14 @@ static void uart_reset(DeviceState *d)
+     s->regs[R_LSR] = LSR_THRE | LSR_TEMT;
+ }
+ 
+-static int lm32_uart_init(SysBusDevice *dev)
++static void lm32_uart_init(Object *obj)
+ {
+-    LM32UartState *s = LM32_UART(dev);
++    LM32UartState *s = LM32_UART(obj);
++    SysBusDevice *dev = SYS_BUS_DEVICE(obj);
+ 
+     sysbus_init_irq(dev, &s->irq);
+ 
+-    memory_region_init_io(&s->iomem, OBJECT(s), &uart_ops, s,
++    memory_region_init_io(&s->iomem, obj, &uart_ops, s,
+                           "uart", R_MAX * 4);
+     sysbus_init_mmio(dev, &s->iomem);
+ 
+@@ -264,8 +265,6 @@ static int lm32_uart_init(SysBusDevice *dev)
+     if (s->chr) {
+         qemu_chr_add_handlers(s->chr, uart_can_rx, uart_rx, uart_event, s);
+     }
+-
+-    return 0;
+ }
+ 
+ static const VMStateDescription vmstate_lm32_uart = {
+@@ -281,9 +280,7 @@ static const VMStateDescription vmstate_lm32_uart = {
+ static void lm32_uart_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = lm32_uart_init;
+     dc->reset = uart_reset;
+     dc->vmsd = &vmstate_lm32_uart;
+     /* Reason: init() method uses qemu_char_get_next_serial() */
+@@ -294,6 +291,7 @@ static const TypeInfo lm32_uart_info = {
+     .name          = TYPE_LM32_UART,
+     .parent        = TYPE_SYS_BUS_DEVICE,
+     .instance_size = sizeof(LM32UartState),
++    .instance_init = lm32_uart_init,
+     .class_init    = lm32_uart_class_init,
+ };
+ 
+-- 
+2.1.4
+

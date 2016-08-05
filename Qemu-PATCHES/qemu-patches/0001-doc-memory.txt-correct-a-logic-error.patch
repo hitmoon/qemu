@@ -1,0 +1,31 @@
+From 2536bc3d4902ff0c9f124268b9a87899a8787b9d Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Fri, 26 Feb 2016 16:19:50 +0800
+Subject: [PATCH] doc/memory.txt: correct a logic error
+
+In the regions overlap example, region B has a higher priority thus
+should has a larger priority number than C.
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ docs/memory.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/docs/memory.txt b/docs/memory.txt
+index 8745f76..d0aca05 100644
+--- a/docs/memory.txt
++++ b/docs/memory.txt
+@@ -180,8 +180,8 @@ aliases that leave holes then the lower priority region will appear in these
+ holes too.)
+ 
+ For example, suppose we have a container A of size 0x8000 with two subregions
+-B and C. B is a container mapped at 0x2000, size 0x4000, priority 1; C is
+-an MMIO region mapped at 0x0, size 0x6000, priority 2. B currently has two
++B and C. B is a container mapped at 0x2000, size 0x4000, priority 2; C is
++an MMIO region mapped at 0x0, size 0x6000, priority 1. B currently has two
+ of its own subregions: D of size 0x1000 at offset 0 and E of size 0x1000 at
+ offset 0x2000. As a diagram:
+ 
+-- 
+2.1.4
+

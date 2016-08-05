@@ -1,0 +1,36 @@
+From 5f807c5f36068cec7f4a04355ee03c4e60960bc3 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Thu, 5 May 2016 18:19:05 +0800
+Subject: [PATCH v1 0/9] QOM'ify hw/intc files
+
+This patch set QOM'ify files under hw/intc directory. See each commit 
+message for details.
+
+Changes in v1:
+  use error_setg instead of error_report in realize function
+
+xiaoqiang zhao (9):
+  hw/intc: QOM'ify etraxfs_pic.c
+  hw/intc: QOM'ify exynos4210_combiner.c
+  hw/intc: QOM'ify exynos4210_gic.c
+  hw/intc: QOM'ify imx_avic.c
+  hw/intc: QOM'ify lm32_pic.c
+  hw/intc: QOM'ify pl190.c
+  hw/intc: QOM'ify slavio_intctl.c
+  hw/intc: QOM'ify grlib_irqmp.c
+  hw/intc: QOM'ify omap_intc.c
+
+ hw/intc/etraxfs_pic.c         | 13 ++++-----
+ hw/intc/exynos4210_combiner.c | 14 ++++------
+ hw/intc/exynos4210_gic.c      | 39 +++++++++++++-------------
+ hw/intc/grlib_irqmp.c         | 27 ++++++++++--------
+ hw/intc/imx_avic.c            | 15 +++++-----
+ hw/intc/lm32_pic.c            | 12 ++++----
+ hw/intc/omap_intc.c           | 64 +++++++++++++++++++++++++------------------
+ hw/intc/pl190.c               | 13 ++++-----
+ hw/intc/slavio_intctl.c       | 14 ++++------
+ 9 files changed, 110 insertions(+), 101 deletions(-)
+
+-- 
+2.1.4
+

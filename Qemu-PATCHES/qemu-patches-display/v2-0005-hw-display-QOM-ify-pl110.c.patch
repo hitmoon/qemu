@@ -1,0 +1,72 @@
+From 8c009c29a6c3d7803334097c62d3863ce6293cab Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Fri, 6 May 2016 18:34:04 +0800
+Subject: [PATCH v2 5/5] hw/display: QOM'ify pl110.c
+
+* Drop the old SysBus init function and use instance_init
+* Move graphic_console_init into realize stage
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/display/pl110.c | 29 +++++++++++++++--------------
+ 1 file changed, 15 insertions(+), 14 deletions(-)
+
+diff --git a/hw/display/pl110.c b/hw/display/pl110.c
+index d589959..73453b9 100644
+--- a/hw/display/pl110.c
++++ b/hw/display/pl110.c
+@@ -465,24 +465,26 @@ static const GraphicHwOps pl110_gfx_ops = {
+     .gfx_update  = pl110_update_display,
+ };
+ 
+-static int pl110_initfn(SysBusDevice *sbd)
++static void pl110_init(Object *obj)
+ {
+-    DeviceState *dev = DEVICE(sbd);
+-    PL110State *s = PL110(dev);
++    DeviceState *dev = DEVICE(obj);
++    PL110State *s = PL110(obj);
++    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+ 
+-    memory_region_init_io(&s->iomem, OBJECT(s), &pl110_ops, s, "pl110", 0x1000);
++    /* subclass instance_init may override this */
++    s->version = PL110;
++
++    memory_region_init_io(&s->iomem, obj, &pl110_ops, s, "pl110", 0x1000);
+     sysbus_init_mmio(sbd, &s->iomem);
+     sysbus_init_irq(sbd, &s->irq);
+     qdev_init_gpio_in(dev, pl110_mux_ctrl_set, 1);
++}
++
++static void pl110_realize(DeviceState *dev, Error **errp)
++{
++    PL110State *s = PL110(dev);
++
+     s->con = graphic_console_init(dev, 0, &pl110_gfx_ops, s);
+-    return 0;
+-}
+-
+-static void pl110_init(Object *obj)
+-{
+-    PL110State *s = PL110(obj);
+-
+-    s->version = PL110;
+ }
+ 
+ static void pl110_versatile_init(Object *obj)
+@@ -502,11 +504,10 @@ static void pl111_init(Object *obj)
+ static void pl110_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = pl110_initfn;
+     set_bit(DEVICE_CATEGORY_DISPLAY, dc->categories);
+     dc->vmsd = &vmstate_pl110;
++    dc->realize = pl110_realize;
+ }
+ 
+ static const TypeInfo pl110_info = {
+-- 
+2.1.4
+

@@ -1,0 +1,28 @@
+From 68690270b223acc36177ac62d09be4ea84c18692 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Tue, 7 Jun 2016 11:13:46 +0800
+Subject: [PATCH 0/7] *** SUBJECT HERE ***
+
+*** BLURB HERE ***
+
+xiaoqiang zhao (7):
+  hw/misc: QOM'ify arm_l2x0.c
+  hw/misc: QOM'ify eccmemctl.c
+  hw/misc: QOM'ify exynos4210_pmu.c
+  hw/misc: QOM'ify milkymist-hpdmc.c
+  hw/misc: QOM'ify milkymist-pfpu.c
+  hw/misc: QOM'ify mst_fpga.c
+  hw/misc: QOM'ify slavio_misc.c
+
+ hw/misc/arm_l2x0.c        | 11 +++++------
+ hw/misc/eccmemctl.c       | 25 ++++++++++++++++---------
+ hw/misc/exynos4210_pmu.c  | 11 +++++------
+ hw/misc/milkymist-hpdmc.c | 12 +++++-------
+ hw/misc/milkymist-pfpu.c  | 12 +++++-------
+ hw/misc/mst_fpga.c        | 13 ++++++-------
+ hw/misc/slavio_misc.c     | 43 +++++++++++++++++--------------------------
+ 7 files changed, 59 insertions(+), 68 deletions(-)
+
+-- 
+2.1.4
+

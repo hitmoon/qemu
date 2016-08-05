@@ -1,0 +1,79 @@
+From 05ba413a44b4c94c05cf05fdc84e86b75819e02a Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Fri, 25 Mar 2016 15:22:37 +0800
+Subject: [PATCH 6/9] hw/net: QOM'ify opencores_eth.c
+
+* Split the old SysBus init into an instance_init and a
+  DeviceClass::realize function
+* Drop the old SysBus init function and use instance_init
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/net/opencores_eth.c | 22 +++++++++++++---------
+ 1 file changed, 13 insertions(+), 9 deletions(-)
+
+diff --git a/hw/net/opencores_eth.c b/hw/net/opencores_eth.c
+index 484d113..d1cdd51 100644
+--- a/hw/net/opencores_eth.c
++++ b/hw/net/opencores_eth.c
+@@ -714,24 +714,28 @@ static const MemoryRegionOps open_eth_desc_ops = {
+     .write = open_eth_desc_write,
+ };
+ 
+-static int sysbus_open_eth_init(SysBusDevice *sbd)
++static void sysbus_open_eth_init(Object *obj)
+ {
+-    DeviceState *dev = DEVICE(sbd);
+-    OpenEthState *s = OPEN_ETH(dev);
++    OpenEthState *s = OPEN_ETH(obj);
++    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+ 
+-    memory_region_init_io(&s->reg_io, OBJECT(dev), &open_eth_reg_ops, s,
++    memory_region_init_io(&s->reg_io, obj, &open_eth_reg_ops, s,
+             "open_eth.regs", 0x54);
+     sysbus_init_mmio(sbd, &s->reg_io);
+ 
+-    memory_region_init_io(&s->desc_io, OBJECT(dev), &open_eth_desc_ops, s,
++    memory_region_init_io(&s->desc_io, obj, &open_eth_desc_ops, s,
+             "open_eth.desc", 0x400);
+     sysbus_init_mmio(sbd, &s->desc_io);
+ 
+     sysbus_init_irq(sbd, &s->irq);
++}
++
++static void sysbus_open_eth_realize(DeviceState *dev, Error **errp)
++{
++    OpenEthState *s = OPEN_ETH(dev);
+ 
+     s->nic = qemu_new_nic(&net_open_eth_info, &s->conf,
+-                          object_get_typename(OBJECT(s)), dev->id, s);
+-    return 0;
++                          object_get_typename(OBJECT(dev)), dev->id, s);
+ }
+ 
+ static void qdev_open_eth_reset(DeviceState *dev)
+@@ -749,19 +753,19 @@ static Property open_eth_properties[] = {
+ static void open_eth_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = sysbus_open_eth_init;
+     set_bit(DEVICE_CATEGORY_NETWORK, dc->categories);
+     dc->desc = "Opencores 10/100 Mbit Ethernet";
+     dc->reset = qdev_open_eth_reset;
+     dc->props = open_eth_properties;
++    dc->realize = sysbus_open_eth_realize;
+ }
+ 
+ static const TypeInfo open_eth_info = {
+     .name          = TYPE_OPEN_ETH,
+     .parent        = TYPE_SYS_BUS_DEVICE,
+     .instance_size = sizeof(OpenEthState),
++    .instance_init = sysbus_open_eth_init,
+     .class_init    = open_eth_class_init,
+ };
+ 
+-- 
+2.1.4
+

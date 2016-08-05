@@ -1,0 +1,22 @@
+From 076b4faaf9536e3b90c2d7763f13e8e4883739ce Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Tue, 7 Jun 2016 10:17:32 +0800
+Subject: [PATCH 0/4] *** SUBJECT HERE ***
+
+*** BLURB HERE ***
+
+xiaoqiang zhao (4):
+  hw/i2c: QOM'ify bitbang_i2c.c
+  hw/i2c: QOM'ify exynos4210_i2c.c
+  hw/i2c: QOM'ify omap_i2c.c
+  hw/i2c: QOM'ify versatile_i2c.c
+
+ hw/i2c/bitbang_i2c.c    | 14 ++++++--------
+ hw/i2c/exynos4210_i2c.c | 13 ++++++-------
+ hw/i2c/omap_i2c.c       | 44 ++++++++++++++++++++++++++------------------
+ hw/i2c/versatile_i2c.c  | 19 ++++++-------------
+ 4 files changed, 44 insertions(+), 46 deletions(-)
+
+-- 
+2.1.4
+

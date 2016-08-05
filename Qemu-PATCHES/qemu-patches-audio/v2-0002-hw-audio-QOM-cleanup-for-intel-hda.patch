@@ -1,0 +1,101 @@
+From 747fdd2a82dfa521f675e6c06d9e57e7d6f56232 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Wed, 16 Mar 2016 14:37:51 +0800
+Subject: [RESEND PATCH v2 2/4] hw/audio: QOM cleanup for intel-hda
+
+drop the DO_UPCAST macro
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/audio/intel-hda.c | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/hw/audio/intel-hda.c b/hw/audio/intel-hda.c
+index d372d4a..5b1e760 100644
+--- a/hw/audio/intel-hda.c
++++ b/hw/audio/intel-hda.c
+@@ -52,8 +52,8 @@ void hda_codec_bus_init(DeviceState *dev, HDACodecBus *bus, size_t bus_size,
+ 
+ static int hda_codec_dev_init(DeviceState *qdev)
+ {
+-    HDACodecBus *bus = DO_UPCAST(HDACodecBus, qbus, qdev->parent_bus);
+-    HDACodecDevice *dev = DO_UPCAST(HDACodecDevice, qdev, qdev);
++    HDACodecBus *bus = HDA_BUS(qdev->parent_bus);
++    HDACodecDevice *dev = HDA_CODEC_DEVICE(qdev);
+     HDACodecDeviceClass *cdc = HDA_CODEC_DEVICE_GET_CLASS(dev);
+ 
+     if (dev->cad == -1) {
+@@ -68,7 +68,7 @@ static int hda_codec_dev_init(DeviceState *qdev)
+ 
+ static int hda_codec_dev_exit(DeviceState *qdev)
+ {
+-    HDACodecDevice *dev = DO_UPCAST(HDACodecDevice, qdev, qdev);
++    HDACodecDevice *dev = HDA_CODEC_DEVICE(qdev);
+     HDACodecDeviceClass *cdc = HDA_CODEC_DEVICE_GET_CLASS(dev);
+ 
+     if (cdc->exit) {
+@@ -84,7 +84,7 @@ HDACodecDevice *hda_codec_find(HDACodecBus *bus, uint32_t cad)
+ 
+     QTAILQ_FOREACH(kid, &bus->qbus.children, sibling) {
+         DeviceState *qdev = kid->child;
+-        cdev = DO_UPCAST(HDACodecDevice, qdev, qdev);
++        cdev = HDA_CODEC_DEVICE(qdev);
+         if (cdev->cad == cad) {
+             return cdev;
+         }
+@@ -94,14 +94,14 @@ HDACodecDevice *hda_codec_find(HDACodecBus *bus, uint32_t cad)
+ 
+ void hda_codec_response(HDACodecDevice *dev, bool solicited, uint32_t response)
+ {
+-    HDACodecBus *bus = DO_UPCAST(HDACodecBus, qbus, dev->qdev.parent_bus);
++    HDACodecBus *bus = HDA_BUS(dev->qdev.parent_bus);
+     bus->response(dev, solicited, response);
+ }
+ 
+ bool hda_codec_xfer(HDACodecDevice *dev, uint32_t stnr, bool output,
+                     uint8_t *buf, uint32_t len)
+ {
+-    HDACodecBus *bus = DO_UPCAST(HDACodecBus, qbus, dev->qdev.parent_bus);
++    HDACodecBus *bus = HDA_BUS(dev->qdev.parent_bus);
+     return bus->xfer(dev, stnr, output, buf, len);
+ }
+ 
+@@ -337,7 +337,7 @@ static void intel_hda_corb_run(IntelHDAState *d)
+ 
+ static void intel_hda_response(HDACodecDevice *dev, bool solicited, uint32_t response)
+ {
+-    HDACodecBus *bus = DO_UPCAST(HDACodecBus, qbus, dev->qdev.parent_bus);
++    HDACodecBus *bus = HDA_BUS(dev->qdev.parent_bus);
+     IntelHDAState *d = container_of(bus, IntelHDAState, codecs);
+     hwaddr addr;
+     uint32_t wp, ex;
+@@ -386,7 +386,7 @@ static void intel_hda_response(HDACodecDevice *dev, bool solicited, uint32_t res
+ static bool intel_hda_xfer(HDACodecDevice *dev, uint32_t stnr, bool output,
+                            uint8_t *buf, uint32_t len)
+ {
+-    HDACodecBus *bus = DO_UPCAST(HDACodecBus, qbus, dev->qdev.parent_bus);
++    HDACodecBus *bus = HDA_BUS(dev->qdev.parent_bus);
+     IntelHDAState *d = container_of(bus, IntelHDAState, codecs);
+     hwaddr addr;
+     uint32_t s, copy, left;
+@@ -493,7 +493,7 @@ static void intel_hda_notify_codecs(IntelHDAState *d, uint32_t stream, bool runn
+         DeviceState *qdev = kid->child;
+         HDACodecDeviceClass *cdc;
+ 
+-        cdev = DO_UPCAST(HDACodecDevice, qdev, qdev);
++        cdev = HDA_CODEC_DEVICE(qdev);
+         cdc = HDA_CODEC_DEVICE_GET_CLASS(cdev);
+         if (cdc->stream) {
+             cdc->stream(cdev, stream, running, output);
+@@ -1120,7 +1120,7 @@ static void intel_hda_reset(DeviceState *dev)
+     /* reset codecs */
+     QTAILQ_FOREACH(kid, &d->codecs.qbus.children, sibling) {
+         DeviceState *qdev = kid->child;
+-        cdev = DO_UPCAST(HDACodecDevice, qdev, qdev);
++        cdev = HDA_CODEC_DEVICE(qdev);
+         device_reset(DEVICE(cdev));
+         d->state_sts |= (1 << cdev->cad);
+     }
+-- 
+2.1.4
+

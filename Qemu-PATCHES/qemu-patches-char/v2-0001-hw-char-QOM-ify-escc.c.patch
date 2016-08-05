@@ -1,0 +1,68 @@
+From e97dec3ab59c9aa7a955469ee19ac451022893fd Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Thu, 17 Mar 2016 11:22:49 +0800
+Subject: [PATCH v2 1/6] hw/char: QOM'ify escc.c
+
+Drop the old SysBus init function and use instance_init
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/char/escc.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/hw/char/escc.c b/hw/char/escc.c
+index 7bf09a0..b802c3e 100644
+--- a/hw/char/escc.c
++++ b/hw/char/escc.c
+@@ -983,9 +983,10 @@ void slavio_serial_ms_kbd_init(hwaddr base, qemu_irq irq,
+     sysbus_mmio_map(s, 0, base);
+ }
+ 
+-static int escc_init1(SysBusDevice *dev)
++static void escc_init1(Object *obj)
+ {
+-    ESCCState *s = ESCC(dev);
++    ESCCState *s = ESCC(obj);
++    SysBusDevice *dev = SYS_BUS_DEVICE(obj);
+     unsigned int i;
+ 
+     s->chn[0].disabled = s->disabled;
+@@ -1002,7 +1003,7 @@ static int escc_init1(SysBusDevice *dev)
+     s->chn[0].otherchn = &s->chn[1];
+     s->chn[1].otherchn = &s->chn[0];
+ 
+-    memory_region_init_io(&s->mmio, OBJECT(s), &escc_mem_ops, s, "escc",
++    memory_region_init_io(&s->mmio, obj, &escc_mem_ops, s, "escc",
+                           ESCC_SIZE << s->it_shift);
+     sysbus_init_mmio(dev, &s->mmio);
+ 
+@@ -1014,8 +1015,6 @@ static int escc_init1(SysBusDevice *dev)
+         s->chn[1].hs = qemu_input_handler_register((DeviceState *)(&s->chn[1]),
+                                                    &sunkbd_handler);
+     }
+-
+-    return 0;
+ }
+ 
+ static Property escc_properties[] = {
+@@ -1032,9 +1031,7 @@ static Property escc_properties[] = {
+ static void escc_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = escc_init1;
+     dc->reset = escc_reset;
+     dc->vmsd = &vmstate_escc;
+     dc->props = escc_properties;
+@@ -1045,6 +1042,7 @@ static const TypeInfo escc_info = {
+     .name          = TYPE_ESCC,
+     .parent        = TYPE_SYS_BUS_DEVICE,
+     .instance_size = sizeof(ESCCState),
++    .instance_init = escc_init1,
+     .class_init    = escc_class_init,
+ };
+ 
+-- 
+2.1.4
+

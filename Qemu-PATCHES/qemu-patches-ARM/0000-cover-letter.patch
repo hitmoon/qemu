@@ -1,0 +1,40 @@
+From 511eec4b927e53a4a70a99ccb572bca8784e7936 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Mon, 13 Jun 2016 18:48:11 +0800
+Subject: [RESEND PATCH 00/12] some ARM platform QOM'ify work (resend)
+
+This patch series QOM'ify ARM platform related devices.
+Where we drop the sysbus init function if possible and use 
+instance_init and DeviceClass::realize function.
+
+xiaoqiang zhao (12):
+  hw/i2c: QOM'ify bitbang_i2c.c
+  hw/i2c: QOM'ify exynos4210_i2c.c
+  hw/i2c: QOM'ify omap_i2c.c
+  hw/i2c: QOM'ify versatile_i2c.c
+  hw/gpio: QOM'ify omap_gpio.c
+  hw/gpio: QOM'ify pl061.c
+  hw/gpio: QOM'ify zaurus.c
+  hw/misc: QOM'ify arm_l2x0.c
+  hw/misc: QOM'ify exynos4210_pmu.c
+  hw/misc: QOM'ify mst_fpga.c
+  hw/dma: QOM'ify pxa2xx_dma.c
+  hw/sd: QOM'ify pl181.c
+
+ hw/dma/pxa2xx_dma.c      | 38 +++++++++++++++++-------------
+ hw/gpio/omap_gpio.c      | 61 ++++++++++++++++++++++++------------------------
+ hw/gpio/pl061.c          | 24 +++++++------------
+ hw/gpio/zaurus.c         | 14 +++++------
+ hw/i2c/bitbang_i2c.c     | 14 +++++------
+ hw/i2c/exynos4210_i2c.c  | 13 +++++------
+ hw/i2c/omap_i2c.c        | 44 ++++++++++++++++++++--------------
+ hw/i2c/versatile_i2c.c   | 19 +++++----------
+ hw/misc/arm_l2x0.c       | 11 ++++-----
+ hw/misc/exynos4210_pmu.c | 11 ++++-----
+ hw/misc/mst_fpga.c       | 13 +++++------
+ hw/sd/pl181.c            | 26 +++++++++++++--------
+ 12 files changed, 143 insertions(+), 145 deletions(-)
+
+-- 
+2.1.4
+

@@ -1,0 +1,55 @@
+From de9d87a2f8395a3be9e451b8698d2393c1a30434 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Wed, 25 May 2016 14:21:33 +0800
+Subject: [PATCH v6 0/5] QOM'ify hw/char devices
+
+This patch set trys to QOM'ify hw/char files, see commit messages 
+for more details
+
+Thanks Paolo <pbonzini@redhat.com> for your suggestions.
+
+Note:
+* CRIS axis_dev88 broad related test is passed and looks ok. 
+* lm32 test cases by Michael <michael@walle.cc> is passed and looks good.
+* lm32 milkymist need test by Michael.
+
+Changes in v6:
+* change lm32_juart_init to accept CharDriverState pointer as a parameter
+* QOM'ify milkymist-uart to drop qemu_char_get_next_serial
+
+Changes in v5: 
+  drop the call of qemu_char_get_next_serial in board code and 
+  direct access serial_hds array
+
+Changes in v4: 
+* add wrapper functions to create char device
+* drop the sysbus_create_simple function and 
+  use the new qdev_create stuff
+
+Changes in v3: 
+* use chardev property instead of qemu_char_get_next_serial
+* call the functions that touch globals in the realize callback
+
+xiaoqiang zhao (5):
+  hw/char: QOM'ify escc.c
+  hw/char: QOM'ify etraxfs_ser.c
+  hw/char: QOM'ify lm32_juart.c
+  hw/char: QOM'ify lm32_uart.c
+  hw/char: QOM'ify milkymist-uart.c
+
+ hw/char/escc.c            | 30 +++++++++++++++++++-----------
+ hw/char/etraxfs_ser.c     | 27 +++++++++++++++++----------
+ hw/char/lm32_juart.c      | 17 ++++++++---------
+ hw/char/lm32_uart.c       | 28 +++++++++++++++++-----------
+ hw/char/milkymist-uart.c  | 10 ++++++----
+ hw/cris/axis_dev88.c      |  4 ++--
+ hw/lm32/lm32.h            | 19 ++++++++++++++++++-
+ hw/lm32/lm32_boards.c     |  9 +++++----
+ hw/lm32/milkymist-hw.h    |  4 +++-
+ hw/lm32/milkymist.c       |  4 ++--
+ include/hw/cris/etraxfs.h | 16 ++++++++++++++++
+ 11 files changed, 113 insertions(+), 55 deletions(-)
+
+-- 
+2.1.4
+

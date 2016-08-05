@@ -1,0 +1,20 @@
+From c7e3ab607efa40a6ecc511ef5463da234809cc4f Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Tue, 7 Jun 2016 17:37:44 +0800
+Subject: [PATCH 0/3] *** SUBJECT HERE ***
+
+*** BLURB HERE ***
+
+xiaoqiang zhao (3):
+  hw/dma: QOM'ify pxa2xx_dma.c
+  hw/dma: QOM'ify sparc32_dma.c
+  hw/dma: QOM'ify sun4m_iommu.c
+
+ hw/dma/pxa2xx_dma.c  | 38 ++++++++++++++++++++++----------------
+ hw/dma/sparc32_dma.c | 25 +++++++++++++++----------
+ hw/dma/sun4m_iommu.c | 12 +++++-------
+ 3 files changed, 42 insertions(+), 33 deletions(-)
+
+-- 
+2.1.4
+

@@ -1,0 +1,29 @@
+From 356af3bfb5999bf3e8533850cb8ef5e6fd150f18 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Thu, 2 Jun 2016 18:08:27 +0800
+Subject: [PATCH v6 0/8] *** SUBJECT HERE ***
+
+*** BLURB HERE ***
+
+xiaoqiang zhao (8):
+  hw/timer: QOM'ify etraxfs_timer
+  hw/timer: QOM'ify lm32_timer
+  hw/timer: QOM'ify m48txx_sysbus (pass 1)
+  hw/timer: QOM'ify m48txx_sysbus (pass 2)
+  hw/timer: QOM'ify milkymist_sysctl
+  hw/timer: QOM'ify puv3_ost
+  hw/timer: QOM'ify slavio_timer
+  hw/timer: QOM'ify grlib_gptimer
+
+ hw/timer/etraxfs_timer.c    | 18 ++++++-------
+ hw/timer/grlib_gptimer.c    | 21 ++++++++--------
+ hw/timer/lm32_timer.c       | 19 ++++++++------
+ hw/timer/m48t59.c           | 61 +++++++++++++++++++++++++++++++--------------
+ hw/timer/milkymist-sysctl.c | 21 ++++++++++------
+ hw/timer/puv3_ost.c         | 18 ++++---------
+ hw/timer/slavio_timer.c     | 12 ++++-----
+ 7 files changed, 96 insertions(+), 74 deletions(-)
+
+-- 
+2.1.4
+

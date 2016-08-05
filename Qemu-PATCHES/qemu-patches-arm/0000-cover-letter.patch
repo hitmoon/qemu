@@ -1,0 +1,35 @@
+From 8414f0641d2a965a2a08243211495bd4ce909d01 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Mon, 7 Mar 2016 14:42:13 +0800
+Subject: [PATCH 0/9] some QOM'ify work under hw/arm
+
+This patch set trying to QOM'ify code under hw/arm directory.
+As previous patches to hw/timer/*, we use instance_init instead of
+the SysBus's init function. 
+
+
+xiaoqiang zhao (9):
+  hw/arm: QOM'ify armv7m.c
+  hw/arm: QOM'ify highbank.c
+  hw/arm: QOM'ify integratorcp.c
+  hw/arm: QOM'ify pxa2xx.c
+  hw/arm: QOM'ify pxa2xx_pic.c
+  hw/arm: QOM'ify spitz.c
+  hw/arm: QOM'ify stellaris.c
+  hw/arm: QOM'ify strongarm.c
+  hw/arm: QOM'ify versatilepb.c
+
+ hw/arm/armv7m.c       | 11 ++++-----
+ hw/arm/highbank.c     | 12 ++++------
+ hw/arm/integratorcp.c | 32 ++++++++++---------------
+ hw/arm/pxa2xx.c       | 26 +++++++++-----------
+ hw/arm/pxa2xx_pic.c   |  7 ------
+ hw/arm/spitz.c        | 23 +++++++-----------
+ hw/arm/stellaris.c    | 48 ++++++++++++++++++-------------------
+ hw/arm/strongarm.c    | 66 ++++++++++++++++++++++-----------------------------
+ hw/arm/versatilepb.c  | 13 +++++-----
+ 9 files changed, 100 insertions(+), 138 deletions(-)
+
+-- 
+2.1.4
+

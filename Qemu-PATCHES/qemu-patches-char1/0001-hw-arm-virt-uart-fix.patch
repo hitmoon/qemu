@@ -1,0 +1,56 @@
+From cb21e0bd1f77c34218507e0893e3155dbe39a567 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Wed, 8 Jun 2016 10:13:57 +0800
+Subject: [PATCH] hw/arm: virt uart fix
+
+commit f0d1d2c115dffc1fbaf954d0b449db05c5eb79b1
+("hw/char: QOM'ify pl011 model") break qemu-system-arm virt machine
+if option '-machine secure=on' is provided.
+
+The function create_uart is called twice. So make CharDriverState pointer
+a parameter to create_uart instead of hardcoded.
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/arm/virt.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/hw/arm/virt.c b/hw/arm/virt.c
+index 8e46137..73113cf 100644
+--- a/hw/arm/virt.c
++++ b/hw/arm/virt.c
+@@ -525,7 +525,7 @@ static void create_gic(VirtBoardInfo *vbi, qemu_irq *pic, int type, bool secure)
+ }
+ 
+ static void create_uart(const VirtBoardInfo *vbi, qemu_irq *pic, int uart,
+-                        MemoryRegion *mem)
++                        MemoryRegion *mem, CharDriverState *chr)
+ {
+     char *nodename;
+     hwaddr base = vbi->memmap[uart].base;
+@@ -536,7 +536,7 @@ static void create_uart(const VirtBoardInfo *vbi, qemu_irq *pic, int uart,
+     DeviceState *dev = qdev_create(NULL, "pl011");
+     SysBusDevice *s = SYS_BUS_DEVICE(dev);
+ 
+-    qdev_prop_set_chr(dev, "chardev", serial_hds[0]);
++    qdev_prop_set_chr(dev, "chardev", chr);
+     qdev_init_nofail(dev);
+     memory_region_add_subregion(mem, base,
+                                 sysbus_mmio_get_region(s, 0));
+@@ -1259,11 +1259,11 @@ static void machvirt_init(MachineState *machine)
+ 
+     create_gic(vbi, pic, gic_version, vms->secure);
+ 
+-    create_uart(vbi, pic, VIRT_UART, sysmem);
++    create_uart(vbi, pic, VIRT_UART, sysmem, serial_hds[0]);
+ 
+     if (vms->secure) {
+         create_secure_ram(vbi, secure_sysmem);
+-        create_uart(vbi, pic, VIRT_SECURE_UART, secure_sysmem);
++        create_uart(vbi, pic, VIRT_SECURE_UART, secure_sysmem, serial_hds[1]);
+     }
+ 
+     create_rtc(vbi, pic);
+-- 
+2.1.4
+

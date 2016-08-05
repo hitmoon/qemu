@@ -1,0 +1,29 @@
+From 7f6698b69105af4ab4f51d59ed97d48ac1f4339d Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Fri, 13 May 2016 11:40:41 +0800
+Subject: [PATCH v3 0/4] QOM'ify hw/audio files
+
+This patch set QOM'ify some files under hw/audio directory.
+See each patch's commit message for details.
+
+Changes in v3: 
+* fix code style errors
+* refine error_setg message format 
+
+Changes in v2: 
+Move AUD_open_in/out function into device realize stage
+
+xiaoqiang zhao (4):
+  hw/audio: QOM'ify cs4231.c
+  hw/audio: QOM cleanup for intel-hda
+  hw/audio: QOM'ify intel-hda
+  hw/audio: QOM'ify milkymist-ac97.c
+
+ hw/audio/cs4231.c         | 12 +++++-------
+ hw/audio/intel-hda.c      | 32 ++++++++++++++++++--------------
+ hw/audio/milkymist-ac97.c | 26 +++++++++++++++-----------
+ 3 files changed, 38 insertions(+), 32 deletions(-)
+
+-- 
+2.1.4
+

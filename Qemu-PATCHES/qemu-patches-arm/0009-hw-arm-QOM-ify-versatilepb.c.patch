@@ -1,0 +1,64 @@
+From 8414f0641d2a965a2a08243211495bd4ce909d01 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Fri, 4 Mar 2016 17:15:15 +0800
+Subject: [PATCH 9/9] hw/arm: QOM'ify versatilepb.c
+
+Drop the use of old SysBus init function and use instance_init
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/arm/versatilepb.c | 13 ++++++-------
+ 1 file changed, 6 insertions(+), 7 deletions(-)
+
+diff --git a/hw/arm/versatilepb.c b/hw/arm/versatilepb.c
+index d061f0f..a2411e3 100644
+--- a/hw/arm/versatilepb.c
++++ b/hw/arm/versatilepb.c
+@@ -150,10 +150,11 @@ static const MemoryRegionOps vpb_sic_ops = {
+     .endianness = DEVICE_NATIVE_ENDIAN,
+ };
+ 
+-static int vpb_sic_init(SysBusDevice *sbd)
++static void vpb_sic_init(Object *obj)
+ {
+-    DeviceState *dev = DEVICE(sbd);
+-    vpb_sic_state *s = VERSATILE_PB_SIC(dev);
++    DeviceState *dev = DEVICE(obj);
++    vpb_sic_state *s = VERSATILE_PB_SIC(obj);
++    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+     int i;
+ 
+     qdev_init_gpio_in(dev, vpb_sic_set_irq, 32);
+@@ -161,10 +162,9 @@ static int vpb_sic_init(SysBusDevice *sbd)
+         sysbus_init_irq(sbd, &s->parent[i]);
+     }
+     s->irq = 31;
+-    memory_region_init_io(&s->iomem, OBJECT(s), &vpb_sic_ops, s,
++    memory_region_init_io(&s->iomem, obj, &vpb_sic_ops, s,
+                           "vpb-sic", 0x1000);
+     sysbus_init_mmio(sbd, &s->iomem);
+-    return 0;
+ }
+ 
+ /* Board init.  */
+@@ -424,9 +424,7 @@ machine_init(versatile_machine_init)
+ static void vpb_sic_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = vpb_sic_init;
+     dc->vmsd = &vmstate_vpb_sic;
+ }
+ 
+@@ -434,6 +432,7 @@ static const TypeInfo vpb_sic_info = {
+     .name          = TYPE_VERSATILE_PB_SIC,
+     .parent        = TYPE_SYS_BUS_DEVICE,
+     .instance_size = sizeof(vpb_sic_state),
++    .instance_init = vpb_sic_init,
+     .class_init    = vpb_sic_class_init,
+ };
+ 
+-- 
+2.1.4
+

@@ -1,0 +1,38 @@
+From 1178a06c53590de6d0aa8ba1ae285db014f3e82e Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Fri, 4 Mar 2016 17:14:28 +0800
+Subject: [PATCH 5/9] hw/arm: QOM'ify pxa2xx_pic.c
+
+Remove the empty 'pxa2xx_pic_initfn' and it's
+setup code in the 'pxa2xx_pic_class_init'
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/arm/pxa2xx_pic.c | 7 -------
+ 1 file changed, 7 deletions(-)
+
+diff --git a/hw/arm/pxa2xx_pic.c b/hw/arm/pxa2xx_pic.c
+index 8a39b1c..9e08c55 100644
+--- a/hw/arm/pxa2xx_pic.c
++++ b/hw/arm/pxa2xx_pic.c
+@@ -308,17 +308,10 @@ static VMStateDescription vmstate_pxa2xx_pic_regs = {
+     },
+ };
+ 
+-static int pxa2xx_pic_initfn(SysBusDevice *dev)
+-{
+-    return 0;
+-}
+-
+ static void pxa2xx_pic_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = pxa2xx_pic_initfn;
+     dc->desc = "PXA2xx PIC";
+     dc->vmsd = &vmstate_pxa2xx_pic_regs;
+ }
+-- 
+2.1.4
+

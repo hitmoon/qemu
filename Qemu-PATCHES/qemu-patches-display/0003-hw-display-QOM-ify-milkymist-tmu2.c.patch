@@ -1,0 +1,73 @@
+From 360a23851e9d22ab07df6228917d1b3c3bc29414 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Tue, 22 Mar 2016 16:55:04 +0800
+Subject: [PATCH RESEND 3/5] hw/display: QOM'ify milkymist-tmu2.c
+
+* Drop the old SysBus init function and use instance_init
+* Move tmu2_glx_init into realize stage
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/display/milkymist-tmu2.c | 24 ++++++++++++++----------
+ 1 file changed, 14 insertions(+), 10 deletions(-)
+
+diff --git a/hw/display/milkymist-tmu2.c b/hw/display/milkymist-tmu2.c
+index 9bc88f9..df10bf4 100644
+--- a/hw/display/milkymist-tmu2.c
++++ b/hw/display/milkymist-tmu2.c
+@@ -443,21 +443,25 @@ static void milkymist_tmu2_reset(DeviceState *d)
+     }
+ }
+ 
+-static int milkymist_tmu2_init(SysBusDevice *dev)
++static void milkymist_tmu2_init(Object *obj)
+ {
+-    MilkymistTMU2State *s = MILKYMIST_TMU2(dev);
+-
+-    if (tmu2_glx_init(s)) {
+-        return 1;
+-    }
++    MilkymistTMU2State *s = MILKYMIST_TMU2(obj);
++    SysBusDevice *dev = SYS_BUS_DEVICE(obj);
+ 
+     sysbus_init_irq(dev, &s->irq);
+ 
+-    memory_region_init_io(&s->regs_region, OBJECT(s), &tmu2_mmio_ops, s,
++    memory_region_init_io(&s->regs_region, obj, &tmu2_mmio_ops, s,
+             "milkymist-tmu2", R_MAX * 4);
+     sysbus_init_mmio(dev, &s->regs_region);
++}
+ 
+-    return 0;
++static void milkymist_tmu2_realize(DeviceState *dev, Error **errp)
++{
++    MilkymistTMU2State *s = MILKYMIST_TMU2(dev);
++
++    if (tmu2_glx_init(s)) {
++        error_setg(errp, "tmu2_glx_init failed.");
++    }
+ }
+ 
+ static const VMStateDescription vmstate_milkymist_tmu2 = {
+@@ -473,9 +477,8 @@ static const VMStateDescription vmstate_milkymist_tmu2 = {
+ static void milkymist_tmu2_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = milkymist_tmu2_init;
++    dc->realize = milkymist_tmu2_realize;
+     dc->reset = milkymist_tmu2_reset;
+     dc->vmsd = &vmstate_milkymist_tmu2;
+ }
+@@ -484,6 +487,7 @@ static const TypeInfo milkymist_tmu2_info = {
+     .name          = TYPE_MILKYMIST_TMU2,
+     .parent        = TYPE_SYS_BUS_DEVICE,
+     .instance_size = sizeof(MilkymistTMU2State),
++    .instance_init = milkymist_tmu2_init,
+     .class_init    = milkymist_tmu2_class_init,
+ };
+ 
+-- 
+2.1.4
+

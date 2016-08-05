@@ -1,0 +1,32 @@
+From e66a7b4eb75b5cc3587794e4f86924e7651ade31 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Wed, 15 Jun 2016 09:59:32 +0800
+Subject: [PATCH 0/9] *** SUBJECT HERE ***
+
+*** BLURB HERE ***
+
+xiaoqiang zhao (9):
+  hw/net: QOM'ify etraxfs_eth.c
+  hw/net: QOM'ify lan9118.c
+  hw/net: QOM'ify lance.c
+  hw/net: QOM'ify milkymist-minimac2.c
+  hw/net: QOM'ify mipsnet.c
+  hw/net: QOM'ify opencores_eth.c
+  hw/net: QOM'ify smc91c111.c
+  hw/net: QOM'ify stellaris_enet.c
+  hw/net: QOM'ify xgmac.c
+
+ hw/net/etraxfs_eth.c        | 34 +++++++++++++++++++---------------
+ hw/net/lan9118.c            | 36 ++++++++++++++++++++----------------
+ hw/net/lance.c              | 31 +++++++++++++++----------------
+ hw/net/milkymist-minimac2.c | 21 ++++++++++++---------
+ hw/net/mipsnet.c            | 19 +++++++++++--------
+ hw/net/opencores_eth.c      | 22 +++++++++++++---------
+ hw/net/smc91c111.c          | 21 +++++++++++++--------
+ hw/net/stellaris_enet.c     | 27 ++++++++++++++++-----------
+ hw/net/xgmac.c              | 19 +++++++++++--------
+ 9 files changed, 130 insertions(+), 100 deletions(-)
+
+-- 
+2.1.4
+

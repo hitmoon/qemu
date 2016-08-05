@@ -1,0 +1,75 @@
+From f1809525943c31fe9c49e90f85f1b826bf1881ed Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Fri, 25 Mar 2016 15:21:59 +0800
+Subject: [PATCH 5/9] hw/net: QOM'ify mipsnet.c
+
+* Split the old SysBus init into an instance_init and a
+  DeviceClass::realize function
+* Drop the old SysBus init function and use instance_init
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/net/mipsnet.c | 19 +++++++++++--------
+ 1 file changed, 11 insertions(+), 8 deletions(-)
+
+diff --git a/hw/net/mipsnet.c b/hw/net/mipsnet.c
+index cf8b823..97f6d19 100644
+--- a/hw/net/mipsnet.c
++++ b/hw/net/mipsnet.c
+@@ -234,21 +234,24 @@ static const MemoryRegionOps mipsnet_ioport_ops = {
+     .impl.max_access_size = 4,
+ };
+ 
+-static int mipsnet_sysbus_init(SysBusDevice *sbd)
++static void mipsnet_sysbus_init(Object *obj)
+ {
+-    DeviceState *dev = DEVICE(sbd);
+-    MIPSnetState *s = MIPS_NET(dev);
++    MIPSnetState *s = MIPS_NET(obj);
++    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+ 
+-    memory_region_init_io(&s->io, OBJECT(dev), &mipsnet_ioport_ops, s,
++    memory_region_init_io(&s->io, obj, &mipsnet_ioport_ops, s,
+                           "mipsnet-io", 36);
+     sysbus_init_mmio(sbd, &s->io);
+     sysbus_init_irq(sbd, &s->irq);
++}
++
++static void mipsnet_sysbus_realize(DeviceState *dev, Error **errp)
++{
++    MIPSnetState *s = MIPS_NET(dev);
+ 
+     s->nic = qemu_new_nic(&net_mipsnet_info, &s->conf,
+                           object_get_typename(OBJECT(dev)), dev->id, s);
+     qemu_format_nic_info_str(qemu_get_queue(s->nic), s->conf.macaddr.a);
+-
+-    return 0;
+ }
+ 
+ static void mipsnet_sysbus_reset(DeviceState *dev)
+@@ -265,20 +268,20 @@ static Property mipsnet_properties[] = {
+ static void mipsnet_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = mipsnet_sysbus_init;
+     set_bit(DEVICE_CATEGORY_NETWORK, dc->categories);
+     dc->desc = "MIPS Simulator network device";
+     dc->reset = mipsnet_sysbus_reset;
+     dc->vmsd = &vmstate_mipsnet;
+     dc->props = mipsnet_properties;
++    dc->realize = mipsnet_sysbus_realize;
+ }
+ 
+ static const TypeInfo mipsnet_info = {
+     .name          = TYPE_MIPS_NET,
+     .parent        = TYPE_SYS_BUS_DEVICE,
+     .instance_size = sizeof(MIPSnetState),
++    .instance_init = mipsnet_sysbus_init,
+     .class_init    = mipsnet_class_init,
+ };
+ 
+-- 
+2.1.4
+

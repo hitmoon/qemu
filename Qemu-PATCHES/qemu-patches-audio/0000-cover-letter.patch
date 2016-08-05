@@ -1,0 +1,22 @@
+From b1d3b9176a3ed2fe365f0eb08b34bf7c0a305442 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Wed, 16 Mar 2016 17:16:22 +0800
+Subject: [PATCH 0/4] QOM'ify hw/audio files
+
+This patch set QOM'ify some files under hw/audio directory.
+See each patch's commit message for details.
+
+xiaoqiang zhao (4):
+  hw/audio: QOM'ify cs4231.c
+  hw/audio: QOM cleanup for intel-hda
+  hw/audio: QOM'ify intel-hda
+  hw/audio: QOM'ify milkymist-ac97.c
+
+ hw/audio/cs4231.c         | 12 +++++-------
+ hw/audio/intel-hda.c      | 30 ++++++++++++++++--------------
+ hw/audio/milkymist-ac97.c | 13 +++++--------
+ 3 files changed, 26 insertions(+), 29 deletions(-)
+
+-- 
+2.1.4
+

@@ -1,0 +1,75 @@
+From c9fe5ad75c6d7343bb6925bcdb6782df322f4013 Mon Sep 17 00:00:00 2001
+From: xiaoqiang zhao <zxq_yx_007@163.com>
+Date: Fri, 25 Mar 2016 15:23:28 +0800
+Subject: [PATCH 7/9] hw/net: QOM'ify smc91c111.c
+
+* Split the old SysBus init into an instance_init and a
+  DeviceClass::realize function
+* Drop the old SysBus init function and use instance_init
+
+Signed-off-by: xiaoqiang zhao <zxq_yx_007@163.com>
+---
+ hw/net/smc91c111.c | 21 +++++++++++++--------
+ 1 file changed, 13 insertions(+), 8 deletions(-)
+
+diff --git a/hw/net/smc91c111.c b/hw/net/smc91c111.c
+index 21c1b8f..ac39f9f 100644
+--- a/hw/net/smc91c111.c
++++ b/hw/net/smc91c111.c
+@@ -761,21 +761,26 @@ static NetClientInfo net_smc91c111_info = {
+     .receive = smc91c111_receive,
+ };
+ 
+-static int smc91c111_init1(SysBusDevice *sbd)
++static void smc91c111_init1(Object *obj)
+ {
+-    DeviceState *dev = DEVICE(sbd);
+-    smc91c111_state *s = SMC91C111(dev);
++    smc91c111_state *s = SMC91C111(obj);
++    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+ 
+-    memory_region_init_io(&s->mmio, OBJECT(s), &smc91c111_mem_ops, s,
++    memory_region_init_io(&s->mmio, obj, &smc91c111_mem_ops, s,
+                           "smc91c111-mmio", 16);
+     sysbus_init_mmio(sbd, &s->mmio);
+     sysbus_init_irq(sbd, &s->irq);
++    /* ??? Save/restore.  */
++}
++
++static void smc91c111_realize(DeviceState *dev, Error **errp)
++{
++    smc91c111_state *s = SMC91C111(dev);
++
+     qemu_macaddr_default_if_unset(&s->conf.macaddr);
+     s->nic = qemu_new_nic(&net_smc91c111_info, &s->conf,
+                           object_get_typename(OBJECT(dev)), dev->id, s);
+     qemu_format_nic_info_str(qemu_get_queue(s->nic), s->conf.macaddr.a);
+-    /* ??? Save/restore.  */
+-    return 0;
+ }
+ 
+ static Property smc91c111_properties[] = {
+@@ -786,18 +791,18 @@ static Property smc91c111_properties[] = {
+ static void smc91c111_class_init(ObjectClass *klass, void *data)
+ {
+     DeviceClass *dc = DEVICE_CLASS(klass);
+-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+ 
+-    k->init = smc91c111_init1;
+     dc->reset = smc91c111_reset;
+     dc->vmsd = &vmstate_smc91c111;
+     dc->props = smc91c111_properties;
++    dc->realize = smc91c111_realize;
+ }
+ 
+ static const TypeInfo smc91c111_info = {
+     .name          = TYPE_SMC91C111,
+     .parent        = TYPE_SYS_BUS_DEVICE,
+     .instance_size = sizeof(smc91c111_state),
++    .instance_init = smc91c111_init1,
+     .class_init    = smc91c111_class_init,
+ };
+ 
+-- 
+2.1.4
+
