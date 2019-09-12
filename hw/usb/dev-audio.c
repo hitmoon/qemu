@@ -30,10 +30,11 @@
  */
 
 #include "qemu/osdep.h"
-#include "qemu-common.h"
+#include "qemu/module.h"
+#include "hw/qdev-properties.h"
 #include "hw/usb.h"
-#include "hw/usb/desc.h"
-#include "hw/hw.h"
+#include "migration/vmstate.h"
+#include "desc.h"
 #include "audio/audio.h"
 
 #define USBAUDIO_VENDOR_NUM     0x46f4 /* CRC16() of "QEMU" */
@@ -319,6 +320,9 @@ static int streambuf_put(struct streambuf *buf, USBPacket *p)
     uint32_t free = buf->size - (buf->prod - buf->cons);
 
     if (!free) {
+        return 0;
+    }
+    if (p->iov.size != USBAUDIO_PACKET_SIZE) {
         return 0;
     }
     assert(free >= USBAUDIO_PACKET_SIZE);
@@ -647,7 +651,7 @@ static void usb_audio_realize(USBDevice *dev, Error **errp)
     s->out.vol[1]        = 240; /* 0 dB */
     s->out.as.freq       = USBAUDIO_SAMPLE_RATE;
     s->out.as.nchannels  = 2;
-    s->out.as.fmt        = AUD_FMT_S16;
+    s->out.as.fmt        = AUDIO_FORMAT_S16;
     s->out.as.endianness = 0;
     streambuf_init(&s->out.buf, s->buffer);
 
@@ -663,6 +667,7 @@ static const VMStateDescription vmstate_usb_audio = {
 };
 
 static Property usb_audio_properties[] = {
+    DEFINE_AUDIO_PROPERTIES(USBAudioState, card),
     DEFINE_PROP_UINT32("debug", USBAudioState, debug, 0),
     DEFINE_PROP_UINT32("buffer", USBAudioState, buffer,
                        32 * USBAUDIO_PACKET_SIZE),

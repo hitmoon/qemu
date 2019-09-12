@@ -23,11 +23,14 @@
 
 
 #include "qemu/osdep.h"
-#include "hw/hw.h"
+#include "hw/irq.h"
+#include "hw/qdev-properties.h"
 #include "hw/sysbus.h"
+#include "migration/vmstate.h"
 #include "trace.h"
-#include "sysemu/char.h"
+#include "chardev/char-fe.h"
 #include "qemu/error-report.h"
+#include "qemu/module.h"
 
 enum {
     R_RXTX = 0,
@@ -266,7 +269,7 @@ static void lm32_uart_realize(DeviceState *dev, Error **errp)
     LM32UartState *s = LM32_UART(dev);
 
     qemu_chr_fe_set_handlers(&s->chr, uart_can_rx, uart_rx,
-                             uart_event, s, NULL, true);
+                             uart_event, NULL, s, NULL, true);
 }
 
 static const VMStateDescription vmstate_lm32_uart = {

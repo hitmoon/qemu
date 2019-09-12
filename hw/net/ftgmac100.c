@@ -12,12 +12,16 @@
  */
 
 #include "qemu/osdep.h"
+#include "hw/irq.h"
 #include "hw/net/ftgmac100.h"
 #include "sysemu/dma.h"
 #include "qemu/log.h"
+#include "qemu/module.h"
 #include "net/checksum.h"
 #include "net/eth.h"
 #include "hw/net/mii.h"
+#include "hw/qdev-properties.h"
+#include "migration/vmstate.h"
 
 /* For crc32 */
 #include <zlib.h>
@@ -88,6 +92,18 @@
  */
 #define FTGMAC100_PHYDATA_MIIWDATA(x)       ((x) & 0xffff)
 #define FTGMAC100_PHYDATA_MIIRDATA(x)       (((x) >> 16) & 0xffff)
+
+/*
+ * PHY control register - New MDC/MDIO interface
+ */
+#define FTGMAC100_PHYCR_NEW_DATA(x)     (((x) >> 16) & 0xffff)
+#define FTGMAC100_PHYCR_NEW_FIRE        (1 << 15)
+#define FTGMAC100_PHYCR_NEW_ST_22       (1 << 12)
+#define FTGMAC100_PHYCR_NEW_OP(x)       (((x) >> 10) & 3)
+#define   FTGMAC100_PHYCR_NEW_OP_WRITE    0x1
+#define   FTGMAC100_PHYCR_NEW_OP_READ     0x2
+#define FTGMAC100_PHYCR_NEW_DEV(x)      (((x) >> 5) & 0x1f)
+#define FTGMAC100_PHYCR_NEW_REG(x)      ((x) & 0x1f)
 
 /*
  * Feature Register
@@ -207,16 +223,18 @@ typedef struct {
 /*
  * Max frame size for the receiving buffer
  */
-#define FTGMAC100_MAX_FRAME_SIZE    10240
+#define FTGMAC100_MAX_FRAME_SIZE    9220
 
 /* Limits depending on the type of the frame
  *
  *   9216 for Jumbo frames (+ 4 for VLAN)
  *   1518 for other frames (+ 4 for VLAN)
  */
-static int ftgmac100_max_frame_size(FTGMAC100State *s)
+static int ftgmac100_max_frame_size(FTGMAC100State *s, uint16_t proto)
 {
-    return (s->maccr & FTGMAC100_MACCR_JUMBO_LF ? 9216 : 1518) + 4;
+    int max = (s->maccr & FTGMAC100_MACCR_JUMBO_LF ? 9216 : 1518);
+
+    return max + (proto == ETH_P_VLAN ? 4 : 0);
 }
 
 static void ftgmac100_update_irq(FTGMAC100State *s)
@@ -267,9 +285,9 @@ static void phy_reset(FTGMAC100State *s)
     s->phy_int = 0;
 }
 
-static uint32_t do_phy_read(FTGMAC100State *s, int reg)
+static uint16_t do_phy_read(FTGMAC100State *s, uint8_t reg)
 {
-    uint32_t val;
+    uint16_t val;
 
     switch (reg) {
     case MII_BMCR: /* Basic Control */
@@ -334,7 +352,7 @@ static uint32_t do_phy_read(FTGMAC100State *s, int reg)
                        MII_BMCR_FD | MII_BMCR_CTST)
 #define MII_ANAR_MASK 0x2d7f
 
-static void do_phy_write(FTGMAC100State *s, int reg, uint32_t val)
+static void do_phy_write(FTGMAC100State *s, uint8_t reg, uint16_t val)
 {
     switch (reg) {
     case MII_BMCR:     /* Basic Control */
@@ -368,6 +386,55 @@ static void do_phy_write(FTGMAC100State *s, int reg, uint32_t val)
         qemu_log_mask(LOG_GUEST_ERROR, "%s: Bad address at offset %d\n",
                       __func__, reg);
         break;
+    }
+}
+
+static void do_phy_new_ctl(FTGMAC100State *s)
+{
+    uint8_t reg;
+    uint16_t data;
+
+    if (!(s->phycr & FTGMAC100_PHYCR_NEW_ST_22)) {
+        qemu_log_mask(LOG_UNIMP, "%s: unsupported ST code\n", __func__);
+        return;
+    }
+
+    /* Nothing to do */
+    if (!(s->phycr & FTGMAC100_PHYCR_NEW_FIRE)) {
+        return;
+    }
+
+    reg = FTGMAC100_PHYCR_NEW_REG(s->phycr);
+    data = FTGMAC100_PHYCR_NEW_DATA(s->phycr);
+
+    switch (FTGMAC100_PHYCR_NEW_OP(s->phycr)) {
+    case FTGMAC100_PHYCR_NEW_OP_WRITE:
+        do_phy_write(s, reg, data);
+        break;
+    case FTGMAC100_PHYCR_NEW_OP_READ:
+        s->phydata = do_phy_read(s, reg) & 0xffff;
+        break;
+    default:
+        qemu_log_mask(LOG_GUEST_ERROR, "%s: invalid OP code %08x\n",
+                      __func__, s->phycr);
+    }
+
+    s->phycr &= ~FTGMAC100_PHYCR_NEW_FIRE;
+}
+
+static void do_phy_ctl(FTGMAC100State *s)
+{
+    uint8_t reg = FTGMAC100_PHYCR_REG(s->phycr);
+
+    if (s->phycr & FTGMAC100_PHYCR_MIIWR) {
+        do_phy_write(s, reg, s->phydata & 0xffff);
+        s->phycr &= ~FTGMAC100_PHYCR_MIIWR;
+    } else if (s->phycr & FTGMAC100_PHYCR_MIIRD) {
+        s->phydata = do_phy_read(s, reg) << 16;
+        s->phycr &= ~FTGMAC100_PHYCR_MIIRD;
+    } else {
+        qemu_log_mask(LOG_GUEST_ERROR, "%s: no OP code %08x\n",
+                      __func__, s->phycr);
     }
 }
 
@@ -408,7 +475,6 @@ static void ftgmac100_do_tx(FTGMAC100State *s, uint32_t tx_ring,
     uint8_t *ptr = s->frame;
     uint32_t addr = tx_descriptor;
     uint32_t flags = 0;
-    int max_frame_size = ftgmac100_max_frame_size(s);
 
     while (1) {
         FTGMAC100Desc bd;
@@ -427,11 +493,12 @@ static void ftgmac100_do_tx(FTGMAC100State *s, uint32_t tx_ring,
             flags = bd.des1;
         }
 
-        len = bd.des0 & 0x3FFF;
-        if (frame_size + len > max_frame_size) {
+        len = FTGMAC100_TXDES0_TXBUF_SIZE(bd.des0);
+        if (frame_size + len > sizeof(s->frame)) {
             qemu_log_mask(LOG_GUEST_ERROR, "%s: frame too big : %d bytes\n",
                           __func__, len);
-            len = max_frame_size - frame_size;
+            s->isr |= FTGMAC100_INT_XPKT_LOST;
+            len =  sizeof(s->frame) - frame_size;
         }
 
         if (dma_memory_read(&address_space_memory, bd.des3, ptr, len)) {
@@ -439,6 +506,22 @@ static void ftgmac100_do_tx(FTGMAC100State *s, uint32_t tx_ring,
                           __func__, bd.des3);
             s->isr |= FTGMAC100_INT_NO_NPTXBUF;
             break;
+        }
+
+        /* Check for VLAN */
+        if (bd.des0 & FTGMAC100_TXDES0_FTS &&
+            bd.des1 & FTGMAC100_TXDES1_INS_VLANTAG &&
+            be16_to_cpu(PKT_GET_ETH_HDR(ptr)->h_proto) != ETH_P_VLAN) {
+            if (frame_size + len + 4 > sizeof(s->frame)) {
+                qemu_log_mask(LOG_GUEST_ERROR, "%s: frame too big : %d bytes\n",
+                              __func__, len);
+                s->isr |= FTGMAC100_INT_XPKT_LOST;
+                len =  sizeof(s->frame) - frame_size - 4;
+            }
+            memmove(ptr + 16, ptr + 12, len - 12);
+            stw_be_p(ptr + 12, ETH_P_VLAN);
+            stw_be_p(ptr + 14, bd.des1);
+            len += 4;
         }
 
         ptr += len;
@@ -511,7 +594,6 @@ static uint32_t ftgmac100_rxpoll(FTGMAC100State *s)
 
     uint32_t cnt = 1024 * FTGMAC100_APTC_RXPOLL_CNT(s->aptcr);
     uint32_t speed = (s->maccr & FTGMAC100_MACCR_FAST_MODE) ? 1 : 0;
-    uint32_t period;
 
     if (s->aptcr & FTGMAC100_APTC_RXPOLL_TIME_SEL) {
         cnt <<= 4;
@@ -521,9 +603,7 @@ static uint32_t ftgmac100_rxpoll(FTGMAC100State *s)
         speed = 2;
     }
 
-    period = cnt / div[speed];
-
-    return period;
+    return cnt / div[speed];
 }
 
 static void ftgmac100_reset(DeviceState *d)
@@ -613,7 +693,6 @@ static void ftgmac100_write(void *opaque, hwaddr addr,
                           uint64_t value, unsigned size)
 {
     FTGMAC100State *s = FTGMAC100(opaque);
-    int reg;
 
     switch (addr & 0xff) {
     case FTGMAC100_ISR: /* Interrupt status */
@@ -696,14 +775,11 @@ static void ftgmac100_write(void *opaque, hwaddr addr,
         break;
 
     case FTGMAC100_PHYCR:  /* PHY Device control */
-        reg = FTGMAC100_PHYCR_REG(value);
         s->phycr = value;
-        if (value & FTGMAC100_PHYCR_MIIWR) {
-            do_phy_write(s, reg, s->phydata & 0xffff);
-            s->phycr &= ~FTGMAC100_PHYCR_MIIWR;
+        if (s->revr & FTGMAC100_REVR_NEW_MDIO_INTERFACE) {
+            do_phy_new_ctl(s);
         } else {
-            s->phydata = do_phy_read(s, reg) << 16;
-            s->phycr &= ~FTGMAC100_PHYCR_MIIRD;
+            do_phy_ctl(s);
         }
         break;
     case FTGMAC100_PHYDATA:
@@ -713,8 +789,7 @@ static void ftgmac100_write(void *opaque, hwaddr addr,
         s->dblac = value;
         break;
     case FTGMAC100_REVR:  /* Feature Register */
-        /* TODO: Only Old MDIO interface is supported */
-        s->revr = value & ~FTGMAC100_REVR_NEW_MDIO_INTERFACE;
+        s->revr = value;
         break;
     case FTGMAC100_FEAR1: /* Feature Register 1 */
         s->fear1 = value;
@@ -761,8 +836,8 @@ static int ftgmac100_filter(FTGMAC100State *s, const uint8_t *buf, size_t len)
                 return 0;
             }
 
-            /* TODO: this does not seem to work for ftgmac100 */
-            mcast_idx = compute_mcast_idx(buf);
+            mcast_idx = net_crc32_le(buf, ETH_ALEN);
+            mcast_idx = (~(mcast_idx >> 2)) & 0x3f;
             if (!(s->math[mcast_idx / 32] & (1 << (mcast_idx % 32)))) {
                 return 0;
             }
@@ -791,7 +866,8 @@ static ssize_t ftgmac100_receive(NetClientState *nc, const uint8_t *buf,
     uint32_t buf_len;
     size_t size = len;
     uint32_t first = FTGMAC100_RXDES0_FRS;
-    int max_frame_size = ftgmac100_max_frame_size(s);
+    uint16_t proto = be16_to_cpu(PKT_GET_ETH_HDR(buf)->h_proto);
+    int max_frame_size = ftgmac100_max_frame_size(s, proto);
 
     if ((s->maccr & (FTGMAC100_MACCR_RXDMA_EN | FTGMAC100_MACCR_RXMAC_EN))
          != (FTGMAC100_MACCR_RXDMA_EN | FTGMAC100_MACCR_RXMAC_EN)) {
@@ -802,12 +878,6 @@ static ssize_t ftgmac100_receive(NetClientState *nc, const uint8_t *buf,
     /* handle small packets.  */
     if (size < 10) {
         qemu_log_mask(LOG_GUEST_ERROR, "%s: dropped frame of %zd bytes\n",
-                      __func__, size);
-        return size;
-    }
-
-    if (size < 64 && !(s->maccr & FTGMAC100_MACCR_RX_RUNT)) {
-        qemu_log_mask(LOG_GUEST_ERROR, "%s: dropped runt frame of %zd bytes\n",
                       __func__, size);
         return size;
     }
@@ -823,9 +893,9 @@ static ssize_t ftgmac100_receive(NetClientState *nc, const uint8_t *buf,
 
     /* Huge frames are truncated.  */
     if (size > max_frame_size) {
-        size = max_frame_size;
         qemu_log_mask(LOG_GUEST_ERROR, "%s: frame too big : %zd bytes\n",
                       __func__, size);
+        size = max_frame_size;
         flags |= FTGMAC100_RXDES0_FTL;
     }
 
@@ -864,7 +934,20 @@ static ssize_t ftgmac100_receive(NetClientState *nc, const uint8_t *buf,
             buf_len += size - 4;
         }
         buf_addr = bd.des3;
-        dma_memory_write(&address_space_memory, buf_addr, buf, buf_len);
+        if (first && proto == ETH_P_VLAN && buf_len >= 18) {
+            bd.des1 = lduw_be_p(buf + 14) | FTGMAC100_RXDES1_VLANTAG_AVAIL;
+
+            if (s->maccr & FTGMAC100_MACCR_RM_VLAN) {
+                dma_memory_write(&address_space_memory, buf_addr, buf, 12);
+                dma_memory_write(&address_space_memory, buf_addr + 12, buf + 16,
+                                 buf_len - 16);
+            } else {
+                dma_memory_write(&address_space_memory, buf_addr, buf, buf_len);
+            }
+        } else {
+            bd.des1 = 0;
+            dma_memory_write(&address_space_memory, buf_addr, buf, buf_len);
+        }
         buf += buf_len;
         if (size < 4) {
             dma_memory_write(&address_space_memory, buf_addr + buf_len,
@@ -937,14 +1020,10 @@ static void ftgmac100_realize(DeviceState *dev, Error **errp)
     sysbus_init_irq(sbd, &s->irq);
     qemu_macaddr_default_if_unset(&s->conf.macaddr);
 
-    s->conf.peers.ncs[0] = nd_table[0].netdev;
-
     s->nic = qemu_new_nic(&net_ftgmac100_info, &s->conf,
                           object_get_typename(OBJECT(dev)), DEVICE(dev)->id,
                           s);
     qemu_format_nic_info_str(qemu_get_queue(s->nic), s->conf.macaddr.a);
-
-    s->frame = g_malloc(FTGMAC100_MAX_FRAME_SIZE);
 }
 
 static const VMStateDescription vmstate_ftgmac100 = {

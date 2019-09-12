@@ -26,8 +26,7 @@
 #define HW_IPMI_H
 
 #include "exec/memory.h"
-#include "qemu-common.h"
-#include "hw/qdev.h"
+#include "hw/qdev-core.h"
 
 #define MAX_IPMI_MSG_SIZE 300
 
@@ -114,9 +113,7 @@ uint32_t ipmi_next_uuid(void);
 #define IPMI_INTERFACE_GET_CLASS(class) \
      OBJECT_GET_CLASS(IPMIInterfaceClass, (class), TYPE_IPMI_INTERFACE)
 
-typedef struct IPMIInterface {
-    Object parent;
-} IPMIInterface;
+typedef struct IPMIInterface IPMIInterface;
 
 typedef struct IPMIInterfaceClass {
     InterfaceClass parent;

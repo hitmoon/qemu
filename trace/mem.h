@@ -18,15 +18,15 @@
  *
  * Return a value for the 'info' argument in guest memory access traces.
  */
-static uint8_t trace_mem_get_info(TCGMemOp op, bool store);
+static uint8_t trace_mem_get_info(MemOp op, bool store);
 
 /**
  * trace_mem_build_info:
  *
  * Return a value for the 'info' argument in guest memory access traces.
  */
-static uint8_t trace_mem_build_info(TCGMemOp size, bool sign_extend,
-                                    TCGMemOp endianness, bool store);
+static uint8_t trace_mem_build_info(int size_shift, bool sign_extend,
+                                    MemOp endianness, bool store);
 
 
 #include "trace/mem-internal.h"

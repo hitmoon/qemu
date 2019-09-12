@@ -10,6 +10,7 @@
 #include "qemu/osdep.h"
 #include "trace/control.h"
 #include "qemu/help_option.h"
+#include "qemu/option.h"
 #ifdef CONFIG_TRACE_SIMPLE
 #include "trace/simple.h"
 #endif
@@ -65,8 +66,15 @@ void trace_event_register_group(TraceEvent **events)
     size_t i;
     for (i = 0; events[i] != NULL; i++) {
         events[i]->id = next_id++;
-        if (events[i]->vcpu_id != TRACE_VCPU_EVENT_NONE) {
+        if (events[i]->vcpu_id == TRACE_VCPU_EVENT_NONE) {
+            continue;
+        }
+
+        if (likely(next_vcpu_id < CPU_TRACE_DSTATE_MAX_EVENTS)) {
             events[i]->vcpu_id = next_vcpu_id++;
+        } else {
+            warn_report("too many vcpu trace events; dropping '%s'",
+                        events[i]->name);
         }
     }
     event_groups = g_renew(TraceEventGroup, event_groups, nevent_groups + 1);
@@ -157,6 +165,12 @@ void trace_list_events(void)
     while ((ev = trace_event_iter_next(&iter)) != NULL) {
         fprintf(stderr, "%s\n", trace_event_get_name(ev));
     }
+#ifdef CONFIG_TRACE_DTRACE
+    fprintf(stderr, "This list of names of trace points may be incomplete "
+                    "when using the DTrace/SystemTap backends.\n"
+                    "Run 'qemu-trace-stap list %s' to print the full list.\n",
+            error_get_progname());
+#endif
 }
 
 static void do_trace_enable_events(const char *line_buf)
@@ -171,8 +185,8 @@ static void do_trace_enable_events(const char *line_buf)
     while ((ev = trace_event_iter_next(&iter)) != NULL) {
         if (!trace_event_get_state_static(ev)) {
             if (!is_pattern) {
-                error_report("WARNING: trace event '%s' is not traceable",
-                             line_ptr);
+                warn_report("trace event '%s' is not traceable",
+                            line_ptr);
                 return;
             }
             continue;
@@ -186,8 +200,8 @@ static void do_trace_enable_events(const char *line_buf)
     }
 
     if (!is_pattern) {
-        error_report("WARNING: trace event '%s' does not exist",
-                     line_ptr);
+        warn_report("trace event '%s' does not exist",
+                    line_ptr);
     }
 }
 
@@ -245,7 +259,7 @@ void trace_init_file(const char *file)
 #ifdef CONFIG_TRACE_SIMPLE
     st_set_trace_file(file);
 #elif defined CONFIG_TRACE_LOG
-    /* If both the simple and the log backends are enabled, "-trace file"
+    /* If both the simple and the log backends are enabled, "--trace file"
      * only applies to the simple backend; use "-D" for the log backend.
      */
     if (file) {
@@ -253,7 +267,7 @@ void trace_init_file(const char *file)
     }
 #else
     if (file) {
-        fprintf(stderr, "error: -trace file=...: "
+        fprintf(stderr, "error: --trace file=...: "
                 "option not supported by the selected tracing backends\n");
         exit(1);
     }

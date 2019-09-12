@@ -27,11 +27,12 @@
  */
 
 #include "qemu/osdep.h"
-#include "qemu-common.h"
 #include "audio.h"
 
 #define AUDIO_CAP "dsound"
 #include "audio_int.h"
+#include "qemu/host-utils.h"
+#include "qemu/module.h"
 
 #include <windows.h>
 #include <mmsystem.h>
@@ -43,16 +44,10 @@
 /* #define DEBUG_DSOUND */
 
 typedef struct {
-    int bufsize_in;
-    int bufsize_out;
-    int latency_millis;
-} DSoundConf;
-
-typedef struct {
     LPDIRECTSOUND dsound;
     LPDIRECTSOUNDCAPTURE dsound_capture;
     struct audsettings settings;
-    DSoundConf conf;
+    Audiodev *dev;
 } dsound;
 
 typedef struct {
@@ -248,9 +243,9 @@ static void GCC_FMT_ATTR (3, 4) dsound_logerr2 (
     dsound_log_hresult (hr);
 }
 
-static DWORD millis_to_bytes (struct audio_pcm_info *info, DWORD millis)
+static uint64_t usecs_to_bytes(struct audio_pcm_info *info, uint32_t usecs)
 {
-    return (millis * info->bytes_per_second) / 1000;
+    return muldiv64(usecs, info->bytes_per_second, 1000000);
 }
 
 #ifdef DEBUG_DSOUND
@@ -459,26 +454,22 @@ static int dsound_ctl_out (HWVoiceOut *hw, int cmd, ...)
     return 0;
 }
 
-static int dsound_write (SWVoiceOut *sw, void *buf, int len)
-{
-    return audio_pcm_sw_write (sw, buf, len);
-}
-
-static int dsound_run_out (HWVoiceOut *hw, int live)
+static size_t dsound_run_out(HWVoiceOut *hw, size_t live)
 {
     int err;
     HRESULT hr;
     DSoundVoiceOut *ds = (DSoundVoiceOut *) hw;
     LPDIRECTSOUNDBUFFER dsb = ds->dsound_buffer;
-    int len, hwshift;
+    size_t len;
+    int hwshift;
     DWORD blen1, blen2;
     DWORD len1, len2;
     DWORD decr;
     DWORD wpos, ppos, old_pos;
     LPVOID p1, p2;
-    int bufsize;
+    size_t bufsize;
     dsound *s = ds->s;
-    DSoundConf *conf = &s->conf;
+    AudiodevDsoundOptions *dso = &s->dev->u.dsound;
 
     if (!dsb) {
         dolog ("Attempt to run empty with playback buffer\n");
@@ -501,14 +492,14 @@ static int dsound_run_out (HWVoiceOut *hw, int live)
     len = live << hwshift;
 
     if (ds->first_time) {
-        if (conf->latency_millis) {
+        if (dso->latency) {
             DWORD cur_blat;
 
             cur_blat = audio_ring_dist (wpos, ppos, bufsize);
             ds->first_time = 0;
             old_pos = wpos;
             old_pos +=
-                millis_to_bytes (&hw->info, conf->latency_millis) - cur_blat;
+                usecs_to_bytes(&hw->info, dso->latency) - cur_blat;
             old_pos %= bufsize;
             old_pos &= ~hw->info.align;
         }
@@ -543,9 +534,9 @@ static int dsound_run_out (HWVoiceOut *hw, int live)
         }
     }
 
-    if (audio_bug (AUDIO_FUNC, len < 0 || len > bufsize)) {
-        dolog ("len=%d bufsize=%d old_pos=%ld ppos=%ld\n",
-               len, bufsize, old_pos, ppos);
+    if (audio_bug(__func__, len > bufsize)) {
+        dolog("len=%zu bufsize=%zu old_pos=%ld ppos=%ld\n",
+              len, bufsize, old_pos, ppos);
         return 0;
     }
 
@@ -650,18 +641,13 @@ static int dsound_ctl_in (HWVoiceIn *hw, int cmd, ...)
     return 0;
 }
 
-static int dsound_read (SWVoiceIn *sw, void *buf, int len)
-{
-    return audio_pcm_sw_read (sw, buf, len);
-}
-
-static int dsound_run_in (HWVoiceIn *hw)
+static size_t dsound_run_in(HWVoiceIn *hw)
 {
     int err;
     HRESULT hr;
     DSoundVoiceIn *ds = (DSoundVoiceIn *) hw;
     LPDIRECTSOUNDCAPTUREBUFFER dscb = ds->dsound_capture_buffer;
-    int live, len, dead;
+    size_t live, len, dead;
     DWORD blen1, blen2;
     DWORD len1, len2;
     DWORD decr;
@@ -712,7 +698,7 @@ static int dsound_run_in (HWVoiceIn *hw)
     if (!len) {
         return 0;
     }
-    len = audio_MIN (len, dead);
+    len = MIN (len, dead);
 
     err = dsound_lock_in (
         dscb,
@@ -747,12 +733,6 @@ static int dsound_run_in (HWVoiceIn *hw)
     return decr;
 }
 
-static DSoundConf glob_conf = {
-    .bufsize_in         = 16384,
-    .bufsize_out        = 16384,
-    .latency_millis     = 10
-};
-
 static void dsound_audio_fini (void *opaque)
 {
     HRESULT hr;
@@ -783,13 +763,22 @@ static void dsound_audio_fini (void *opaque)
     g_free(s);
 }
 
-static void *dsound_audio_init (void)
+static void *dsound_audio_init(Audiodev *dev)
 {
     int err;
     HRESULT hr;
     dsound *s = g_malloc0(sizeof(dsound));
+    AudiodevDsoundOptions *dso;
 
-    s->conf = glob_conf;
+    assert(dev->driver == AUDIODEV_DRIVER_DSOUND);
+    s->dev = dev;
+    dso = &dev->u.dsound;
+
+    if (!dso->has_latency) {
+        dso->has_latency = true;
+        dso->latency = 10000; /* 10 ms */
+    }
+
     hr = CoInitialize (NULL);
     if (FAILED (hr)) {
         dsound_logerr (hr, "Could not initialize COM\n");
@@ -854,46 +843,21 @@ static void *dsound_audio_init (void)
     return s;
 }
 
-static struct audio_option dsound_options[] = {
-    {
-        .name  = "LATENCY_MILLIS",
-        .tag   = AUD_OPT_INT,
-        .valp  = &glob_conf.latency_millis,
-        .descr = "(undocumented)"
-    },
-    {
-        .name  = "BUFSIZE_OUT",
-        .tag   = AUD_OPT_INT,
-        .valp  = &glob_conf.bufsize_out,
-        .descr = "(undocumented)"
-    },
-    {
-        .name  = "BUFSIZE_IN",
-        .tag   = AUD_OPT_INT,
-        .valp  = &glob_conf.bufsize_in,
-        .descr = "(undocumented)"
-    },
-    { /* End of list */ }
-};
-
 static struct audio_pcm_ops dsound_pcm_ops = {
     .init_out = dsound_init_out,
     .fini_out = dsound_fini_out,
     .run_out  = dsound_run_out,
-    .write    = dsound_write,
     .ctl_out  = dsound_ctl_out,
 
     .init_in  = dsound_init_in,
     .fini_in  = dsound_fini_in,
     .run_in   = dsound_run_in,
-    .read     = dsound_read,
     .ctl_in   = dsound_ctl_in
 };
 
-struct audio_driver dsound_audio_driver = {
+static struct audio_driver dsound_audio_driver = {
     .name           = "dsound",
     .descr          = "DirectSound http://wikipedia.org/wiki/DirectSound",
-    .options        = dsound_options,
     .init           = dsound_audio_init,
     .fini           = dsound_audio_fini,
     .pcm_ops        = &dsound_pcm_ops,
@@ -903,3 +867,9 @@ struct audio_driver dsound_audio_driver = {
     .voice_size_out = sizeof (DSoundVoiceOut),
     .voice_size_in  = sizeof (DSoundVoiceIn)
 };
+
+static void register_audio_dsound(void)
+{
+    audio_driver_register(&dsound_audio_driver);
+}
+type_init(register_audio_dsound);

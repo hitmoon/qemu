@@ -8,9 +8,9 @@
  *
  */
 
+#include "qemu/osdep.h"
 #include <glib/gprintf.h>
 
-#include "qemu/osdep.h"
 #include "qemu/main-loop.h"
 #include "hw/ptimer.h"
 
@@ -50,13 +50,15 @@ static void ptimer_test_set_qemu_time_ns(int64_t ns)
 
 static void qemu_clock_step(uint64_t ns)
 {
-    int64_t deadline = qemu_clock_deadline_ns_all(QEMU_CLOCK_VIRTUAL);
+    int64_t deadline = qemu_clock_deadline_ns_all(QEMU_CLOCK_VIRTUAL,
+                                                  QEMU_TIMER_ATTR_ALL);
     int64_t advanced_time = qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + ns;
 
     while (deadline != -1 && deadline <= advanced_time) {
         ptimer_test_set_qemu_time_ns(deadline);
         ptimer_test_expire_qemu_timers(deadline, QEMU_CLOCK_VIRTUAL);
-        deadline = qemu_clock_deadline_ns_all(QEMU_CLOCK_VIRTUAL);
+        deadline = qemu_clock_deadline_ns_all(QEMU_CLOCK_VIRTUAL,
+                                              QEMU_TIMER_ATTR_ALL);
     }
 
     ptimer_test_set_qemu_time_ns(advanced_time);
@@ -208,6 +210,7 @@ static void check_periodic(gconstpointer arg)
     bool no_immediate_trigger = (*policy & PTIMER_POLICY_NO_IMMEDIATE_TRIGGER);
     bool no_immediate_reload = (*policy & PTIMER_POLICY_NO_IMMEDIATE_RELOAD);
     bool no_round_down = (*policy & PTIMER_POLICY_NO_COUNTER_ROUND_DOWN);
+    bool trig_only_on_dec = (*policy & PTIMER_POLICY_TRIGGER_ONLY_ON_DECREMENT);
 
     triggered = false;
 
@@ -311,7 +314,7 @@ static void check_periodic(gconstpointer arg)
     g_assert_cmpuint(ptimer_get_count(ptimer), ==,
                      no_immediate_reload ? 0 : 10);
 
-    if (no_immediate_trigger) {
+    if (no_immediate_trigger || trig_only_on_dec) {
         g_assert_false(triggered);
     } else {
         g_assert_true(triggered);
@@ -506,6 +509,7 @@ static void check_run_with_delta_0(gconstpointer arg)
     bool no_immediate_trigger = (*policy & PTIMER_POLICY_NO_IMMEDIATE_TRIGGER);
     bool no_immediate_reload = (*policy & PTIMER_POLICY_NO_IMMEDIATE_RELOAD);
     bool no_round_down = (*policy & PTIMER_POLICY_NO_COUNTER_ROUND_DOWN);
+    bool trig_only_on_dec = (*policy & PTIMER_POLICY_TRIGGER_ONLY_ON_DECREMENT);
 
     triggered = false;
 
@@ -515,7 +519,7 @@ static void check_run_with_delta_0(gconstpointer arg)
     g_assert_cmpuint(ptimer_get_count(ptimer), ==,
                      no_immediate_reload ? 0 : 99);
 
-    if (no_immediate_trigger) {
+    if (no_immediate_trigger || trig_only_on_dec) {
         g_assert_false(triggered);
     } else {
         g_assert_true(triggered);
@@ -563,7 +567,7 @@ static void check_run_with_delta_0(gconstpointer arg)
     g_assert_cmpuint(ptimer_get_count(ptimer), ==,
                      no_immediate_reload ? 0 : 99);
 
-    if (no_immediate_trigger) {
+    if (no_immediate_trigger || trig_only_on_dec) {
         g_assert_false(triggered);
     } else {
         g_assert_true(triggered);
@@ -609,6 +613,7 @@ static void check_periodic_with_load_0(gconstpointer arg)
     ptimer_state *ptimer = ptimer_init(bh, *policy);
     bool continuous_trigger = (*policy & PTIMER_POLICY_CONTINUOUS_TRIGGER);
     bool no_immediate_trigger = (*policy & PTIMER_POLICY_NO_IMMEDIATE_TRIGGER);
+    bool trig_only_on_dec = (*policy & PTIMER_POLICY_TRIGGER_ONLY_ON_DECREMENT);
 
     triggered = false;
 
@@ -617,7 +622,7 @@ static void check_periodic_with_load_0(gconstpointer arg)
 
     g_assert_cmpuint(ptimer_get_count(ptimer), ==, 0);
 
-    if (no_immediate_trigger) {
+    if (no_immediate_trigger || trig_only_on_dec) {
         g_assert_false(triggered);
     } else {
         g_assert_true(triggered);
@@ -667,6 +672,7 @@ static void check_oneshot_with_load_0(gconstpointer arg)
     QEMUBH *bh = qemu_bh_new(ptimer_trigger, NULL);
     ptimer_state *ptimer = ptimer_init(bh, *policy);
     bool no_immediate_trigger = (*policy & PTIMER_POLICY_NO_IMMEDIATE_TRIGGER);
+    bool trig_only_on_dec = (*policy & PTIMER_POLICY_TRIGGER_ONLY_ON_DECREMENT);
 
     triggered = false;
 
@@ -675,7 +681,7 @@ static void check_oneshot_with_load_0(gconstpointer arg)
 
     g_assert_cmpuint(ptimer_get_count(ptimer), ==, 0);
 
-    if (no_immediate_trigger) {
+    if (no_immediate_trigger || trig_only_on_dec) {
         g_assert_false(triggered);
     } else {
         g_assert_true(triggered);
@@ -723,6 +729,10 @@ static void add_ptimer_tests(uint8_t policy)
 
     if (policy & PTIMER_POLICY_NO_COUNTER_ROUND_DOWN) {
         g_strlcat(policy_name, "no_counter_rounddown,", 256);
+    }
+
+    if (policy & PTIMER_POLICY_TRIGGER_ONLY_ON_DECREMENT) {
+        g_strlcat(policy_name, "trigger_only_on_decrement,", 256);
     }
 
     g_test_add_data_func_full(
@@ -790,10 +800,15 @@ static void add_ptimer_tests(uint8_t policy)
 
 static void add_all_ptimer_policies_comb_tests(void)
 {
-    int last_policy = PTIMER_POLICY_NO_COUNTER_ROUND_DOWN;
+    int last_policy = PTIMER_POLICY_TRIGGER_ONLY_ON_DECREMENT;
     int policy = PTIMER_POLICY_DEFAULT;
 
     for (; policy < (last_policy << 1); policy++) {
+        if ((policy & PTIMER_POLICY_TRIGGER_ONLY_ON_DECREMENT) &&
+            (policy & PTIMER_POLICY_NO_IMMEDIATE_TRIGGER)) {
+            /* Incompatible policy flag settings -- don't try to test them */
+            continue;
+        }
         add_ptimer_tests(policy);
     }
 }

@@ -24,10 +24,11 @@
 
 #include "qemu/osdep.h"
 #include "qapi/error.h"
-#include "hw/hw.h"
+#include "qemu/module.h"
 #include "hw/audio/soundhw.h"
 #include "audio/audio.h"
 #include "hw/isa/isa.h"
+#include "hw/qdev-properties.h"
 
 //#define DEBUG
 
@@ -73,8 +74,6 @@ typedef struct {
     FM_OPL *opl;
     PortioList port_list;
 } AdlibState;
-
-static AdlibState *glob_adlib;
 
 static void adlib_stop_opl_timer (AdlibState *s, size_t n)
 {
@@ -130,9 +129,9 @@ static uint32_t adlib_read(void *opaque, uint32_t nport)
     return data;
 }
 
-static void timer_handler (int c, double interval_Sec)
+static void timer_handler (void *opaque, int c, double interval_Sec)
 {
-    AdlibState *s = glob_adlib;
+    AdlibState *s = opaque;
     unsigned n = c & 1;
 #ifdef DEBUG
     double interval;
@@ -196,7 +195,7 @@ static void adlib_callback (void *opaque, int free)
         return;
     }
 
-    to_play = audio_MIN (s->left, samples);
+    to_play = MIN (s->left, samples);
     while (to_play) {
         written = write_audio (s, to_play);
 
@@ -211,7 +210,7 @@ static void adlib_callback (void *opaque, int free)
         }
     }
 
-    samples = audio_MIN (samples, s->samples - s->pos);
+    samples = MIN (samples, s->samples - s->pos);
     if (!samples) {
         return;
     }
@@ -259,25 +258,19 @@ static void adlib_realizefn (DeviceState *dev, Error **errp)
     AdlibState *s = ADLIB(dev);
     struct audsettings as;
 
-    if (glob_adlib) {
-        error_setg (errp, "Cannot create more than 1 adlib device");
-        return;
-    }
-    glob_adlib = s;
-
     s->opl = OPLCreate (3579545, s->freq);
     if (!s->opl) {
         error_setg (errp, "OPLCreate %d failed", s->freq);
         return;
     }
     else {
-        OPLSetTimerHandler (s->opl, timer_handler, 0);
+        OPLSetTimerHandler(s->opl, timer_handler, s);
         s->enabled = 1;
     }
 
     as.freq = s->freq;
     as.nchannels = SHIFT;
-    as.fmt = AUD_FMT_S16;
+    as.fmt = AUDIO_FORMAT_S16;
     as.endianness = AUDIO_HOST_ENDIANNESS;
 
     AUD_register_card ("adlib", &s->card);
@@ -306,6 +299,7 @@ static void adlib_realizefn (DeviceState *dev, Error **errp)
 }
 
 static Property adlib_properties[] = {
+    DEFINE_AUDIO_PROPERTIES(AdlibState, card),
     DEFINE_PROP_UINT32 ("iobase",  AdlibState, port, 0x220),
     DEFINE_PROP_UINT32 ("freq",    AdlibState, freq,  44100),
     DEFINE_PROP_END_OF_LIST (),

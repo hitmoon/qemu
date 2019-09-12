@@ -10,10 +10,10 @@
 
 #include "qemu/osdep.h"
 #include "hw/hw.h"
+#include "hw/irq.h"
 #include "hw/sh4/sh.h"
 #include "qemu/timer.h"
 #include "qemu/main-loop.h"
-#include "exec/address-spaces.h"
 #include "hw/ptimer.h"
 
 //#define DEBUG_TIMER
@@ -75,6 +75,7 @@ static uint32_t sh_timer_read(void *opaque, hwaddr offset)
     case OFFSET_TCPR:
         if (s->feat & TIMER_FEAT_CAPT)
             return s->tcpr;
+        /* fall through */
     default:
         hw_error("sh_timer_read: Bad offset %x\n", (int)offset);
         return 0;

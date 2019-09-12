@@ -17,21 +17,13 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>
+#include "qemu/osdep.h"
 #include <getopt.h>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <unistd.h>
 #include <sys/reboot.h>
 #include <sys/syscall.h>
 #include <linux/random.h>
-#include <sys/time.h>
 #include <pthread.h>
-#include <fcntl.h>
 #include <sys/mount.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
 
 const char *argv0;
 
@@ -112,9 +104,9 @@ static int get_command_arg_str(const char *name,
     }
 
     if (end)
-        *val = strndup(start, end - start);
+        *val = g_strndup(start, end - start);
     else
-        *val = strdup(start);
+        *val = g_strdup(start);
     return 1;
 }
 
@@ -134,10 +126,10 @@ static int get_command_arg_ull(const char *name,
     if (errno || *end) {
         fprintf(stderr, "%s (%05d): ERROR: cannot parse %s value %s\n",
                 argv0, gettid(), name, valstr);
-        free(valstr);
+        g_free(valstr);
         return -1;
     }
-    free(valstr);
+    g_free(valstr);
     return 0;
 }
 

@@ -18,8 +18,8 @@
  */
 
 #include "qemu/osdep.h"
-#include "hw/hw.h"
 #include "qemu/host-utils.h"
+#include "qemu/module.h"
 #include "qemu/error-report.h"
 #include "qemu/timer.h"
 #include "ui/qemu-spice.h"
@@ -77,7 +77,7 @@ static const SpiceRecordInterface record_sif = {
     .base.minor_version = SPICE_INTERFACE_RECORD_MINOR,
 };
 
-static void *spice_audio_init (void)
+static void *spice_audio_init(Audiodev *dev)
 {
     if (!using_spice) {
         return NULL;
@@ -130,7 +130,7 @@ static int line_out_init(HWVoiceOut *hw, struct audsettings *as,
     settings.freq       = SPICE_INTERFACE_PLAYBACK_FREQ;
 #endif
     settings.nchannels  = SPICE_INTERFACE_PLAYBACK_CHAN;
-    settings.fmt        = AUD_FMT_S16;
+    settings.fmt        = AUDIO_FORMAT_S16;
     settings.endianness = AUDIO_HOST_ENDIANNESS;
 
     audio_pcm_init_info (&hw->info, &settings);
@@ -152,31 +152,31 @@ static void line_out_fini (HWVoiceOut *hw)
     spice_server_remove_interface (&out->sin.base);
 }
 
-static int line_out_run (HWVoiceOut *hw, int live)
+static size_t line_out_run (HWVoiceOut *hw, size_t live)
 {
     SpiceVoiceOut *out = container_of (hw, SpiceVoiceOut, hw);
-    int rpos, decr;
-    int samples;
+    size_t rpos, decr;
+    size_t samples;
 
     if (!live) {
         return 0;
     }
 
     decr = rate_get_samples (&hw->info, &out->rate);
-    decr = audio_MIN (live, decr);
+    decr = MIN (live, decr);
 
     samples = decr;
     rpos = hw->rpos;
     while (samples) {
         int left_till_end_samples = hw->samples - rpos;
-        int len = audio_MIN (samples, left_till_end_samples);
+        int len = MIN (samples, left_till_end_samples);
 
         if (!out->frame) {
             spice_server_playback_get_buffer (&out->sin, &out->frame, &out->fsize);
             out->fpos = out->frame;
         }
         if (out->frame) {
-            len = audio_MIN (len, out->fsize);
+            len = MIN (len, out->fsize);
             hw->clip (out->fpos, hw->mix_buf + rpos, len);
             out->fsize -= len;
             out->fpos  += len;
@@ -190,11 +190,6 @@ static int line_out_run (HWVoiceOut *hw, int live)
     }
     hw->rpos = rpos;
     return decr;
-}
-
-static int line_out_write (SWVoiceOut *sw, void *buf, int len)
-{
-    return audio_pcm_sw_write (sw, buf, len);
 }
 
 static int line_out_ctl (HWVoiceOut *hw, int cmd, ...)
@@ -258,7 +253,7 @@ static int line_in_init(HWVoiceIn *hw, struct audsettings *as, void *drv_opaque)
     settings.freq       = SPICE_INTERFACE_RECORD_FREQ;
 #endif
     settings.nchannels  = SPICE_INTERFACE_RECORD_CHAN;
-    settings.fmt        = AUD_FMT_S16;
+    settings.fmt        = AUDIO_FORMAT_S16;
     settings.endianness = AUDIO_HOST_ENDIANNESS;
 
     audio_pcm_init_info (&hw->info, &settings);
@@ -280,12 +275,12 @@ static void line_in_fini (HWVoiceIn *hw)
     spice_server_remove_interface (&in->sin.base);
 }
 
-static int line_in_run (HWVoiceIn *hw)
+static size_t line_in_run(HWVoiceIn *hw)
 {
     SpiceVoiceIn *in = container_of (hw, SpiceVoiceIn, hw);
-    int num_samples;
+    size_t num_samples;
     int ready;
-    int len[2];
+    size_t len[2];
     uint64_t delta_samp;
     const uint32_t *samples;
 
@@ -294,7 +289,7 @@ static int line_in_run (HWVoiceIn *hw)
     }
 
     delta_samp = rate_get_samples (&hw->info, &in->rate);
-    num_samples = audio_MIN (num_samples, delta_samp);
+    num_samples = MIN (num_samples, delta_samp);
 
     ready = spice_server_record_get_samples (&in->sin, in->samples, num_samples);
     samples = in->samples;
@@ -304,7 +299,7 @@ static int line_in_run (HWVoiceIn *hw)
         ready = LINE_IN_SAMPLES;
     }
 
-    num_samples = audio_MIN (ready, num_samples);
+    num_samples = MIN (ready, num_samples);
 
     if (hw->wpos + num_samples > hw->samples) {
         len[0] = hw->samples - hw->wpos;
@@ -323,11 +318,6 @@ static int line_in_run (HWVoiceIn *hw)
     hw->wpos = (hw->wpos + num_samples) % hw->samples;
 
     return num_samples;
-}
-
-static int line_in_read (SWVoiceIn *sw, void *buf, int size)
-{
-    return audio_pcm_sw_read (sw, buf, size);
 }
 
 static int line_in_ctl (HWVoiceIn *hw, int cmd, ...)
@@ -373,28 +363,21 @@ static int line_in_ctl (HWVoiceIn *hw, int cmd, ...)
     return 0;
 }
 
-static struct audio_option audio_options[] = {
-    { /* end of list */ },
-};
-
 static struct audio_pcm_ops audio_callbacks = {
     .init_out = line_out_init,
     .fini_out = line_out_fini,
     .run_out  = line_out_run,
-    .write    = line_out_write,
     .ctl_out  = line_out_ctl,
 
     .init_in  = line_in_init,
     .fini_in  = line_in_fini,
     .run_in   = line_in_run,
-    .read     = line_in_read,
     .ctl_in   = line_in_ctl,
 };
 
-struct audio_driver spice_audio_driver = {
+static struct audio_driver spice_audio_driver = {
     .name           = "spice",
     .descr          = "spice audio driver",
-    .options        = audio_options,
     .init           = spice_audio_init,
     .fini           = spice_audio_fini,
     .pcm_ops        = &audio_callbacks,
@@ -411,3 +394,9 @@ void qemu_spice_audio_init (void)
 {
     spice_audio_driver.can_be_default = 1;
 }
+
+static void register_audio_spice(void)
+{
+    audio_driver_register(&spice_audio_driver);
+}
+type_init(register_audio_spice);

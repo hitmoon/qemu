@@ -26,6 +26,7 @@
 #define ASPEED_SMC_H
 
 #include "hw/ssi/ssi.h"
+#include "hw/sysbus.h"
 
 typedef struct AspeedSegments {
     hwaddr addr;
@@ -97,7 +98,13 @@ typedef struct AspeedSMCState {
     uint8_t r_timings;
     uint8_t conf_enable_w0;
 
+    /* for DMA support */
+    uint64_t sdram_base;
+
     AspeedSMCFlash *flashes;
+
+    uint8_t snoop_index;
+    uint8_t snoop_dummies;
 } AspeedSMCState;
 
 #endif /* ASPEED_SMC_H */
